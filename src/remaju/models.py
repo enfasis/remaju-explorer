@@ -137,7 +137,7 @@ class Auction(BaseModel):
     numero_remate: str
     list_data: RemateListItem
     detail: RemateDetail
-    seguimiento: Seguimiento
+    seguimiento: Optional[Seguimiento] = None
 
     @property
     def has_inmuebles(self) -> bool:
