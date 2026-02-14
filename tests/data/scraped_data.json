@@ -1,0 +1,187 @@
+{
+  "website_info": {
+    "url": "https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml",
+    "title": "REMAJU - Sistema de remates virtuales",
+    "version": "3.6.0",
+    "total_records": 197,
+    "records_per_page": 4,
+    "technology": "JavaServer Faces (JSF) with PrimeFaces"
+  },
+  "scraping_notes": {
+    "technology": "JSF/PrimeFaces uses AJAX requests with javax.faces.ViewState for state management",
+    "captcha": "Page has CAPTCHA that needs to be handled",
+    "pagination": "Uses PrimeFaces paginator with page numbers 1-5+",
+    "detail_pages": "Each remate has detail, seguimiento, and inmuebles views"
+  },
+  "remates_page_1": [
+    {
+      "numero_remate": "22096",
+      "convocatoria": "PRIMERA CONVOCATORIA",
+      "tipo": "REMATE SIMPLE",
+      "distrito": "SAN BORJA",
+      "fecha_presentacion": "26/02/2026",
+      "hora_presentacion": "11:59 AM",
+      "fase": "Publicación e Inscripcion",
+      "estado": "En proceso",
+      "precio_base": "S/. 1,163,355.99",
+      "descripcion": "DEPARTAMENTO TIPO DUPLEX UBICADO EN EL OCTAVO PISO Y AZOTEA DE UN EDIFICIO DE OCHO PISOS CON AZOTEA Y SEMISÓTANO"
+    },
+    {
+      "numero_remate": "22095",
+      "convocatoria": "PRIMERA CONVOCATORIA",
+      "tipo": "REMATE SIMPLE",
+      "distrito": "TUMBADEN",
+      "fecha_presentacion": "26/02/2026",
+      "hora_presentacion": "11:59 AM",
+      "fase": "Publicación e Inscripcion",
+      "estado": "En proceso",
+      "precio_base": "S/. 251,934.16",
+      "descripcion": "PREDIO RÚSTICO DENOMINADO 'REGALADO', UBICADO EN EL CASERÍO ALTO PERÚ, DISTRITO DE TUMBADÉN, PROVINCIA DE SAN PABLO, DEPARTAMENTO DE CAJAMARCA, CON UN ÁREA DE 5.9851 HA., CON UNIDAD CATASTRAL N° 004875 E INSCRITO EN LA PARTIDA ELECTRÓNICA N° 11092806"
+    },
+    {
+      "numero_remate": "22094",
+      "convocatoria": "PRIMERA CONVOCATORIA",
+      "tipo": "REMATE SIMPLE",
+      "distrito": "BREÑA",
+      "fecha_presentacion": "25/02/2026",
+      "hora_presentacion": "11:59 AM",
+      "fase": "Publicación e Inscripcion",
+      "estado": "En proceso",
+      "precio_base": null,
+      "descripcion": "DEPARTAMENTO UBICADO EN EL DÉCIMO QUINTO PISO DE UN EDIFICIO DE DIECINUEVE PISOS"
+    },
+    {
+      "numero_remate": "22093",
+      "convocatoria": "PRIMERA CONVOCATORIA",
+      "tipo": "REMATE SIMPLE",
+      "distrito": "CONTAMANA",
+      "fecha_presentacion": "20/02/2026",
+      "hora_presentacion": "11:59 AM",
+      "fase": "Publicación e Inscripcion",
+      "estado": "En proceso",
+      "precio_base": null,
+      "descripcion": "CENTRO POBLADO ÁREA URBANA DE CONTAMANA I ETAPA MZ 18 LOTE 10, DISTRITO DE CONTAMANA, PROVINCIA DE UCAYALI, DEPARTAMENTO DE LORETO INSCRITO EN LA PARTIDA ELECTRÓNICA N° P12052917 DE LA ZONA REGISTRAL N° IV – SEDE IQUITOS, OFICINA REGISTRAL IQUITOS"
+    }
+  ],
+  "remate_detail_example": {
+    "numero_remate": "22096",
+    "url": "https://remaju.pj.gob.pe/remaju/pages/publico/mostrarDetalleRemate.xhtml",
+    "tabs": ["Remate", "Inmuebles", "Cronograma"],
+    "remate_tab": {
+      "expediente": "15700-2023-0-1817-JR-CO-07",
+      "distrito_judicial": "LIMA",
+      "organo_jurisdiccional": "7°JUZGADO CIVIL-COMERCIAL",
+      "instancia": "JUZGADO ESPECIALIZADO",
+      "juez": "VARILLAS SOLANO, JUAN GUSTAVO",
+      "especialista": "CACERES CASTILLO EDWARD JESUS",
+      "materia": "EJECUCION DE GARANTIAS",
+      "resolucion": "6",
+      "fecha_resolucion": "21/04/2025",
+      "archivo": "resolucion.pdf",
+      "convocatoria": "PRIMERA CONVOCATORIA",
+      "tasacion": "S/. 1,745,033.98",
+      "precio_base": "S/. 1,163,355.99",
+      "incremento_entre_ofertas": "S/. 3,490.07",
+      "arancel": "S/. 1,100.00",
+      "oblaje": "S/. 174,503.40",
+      "descripcion": "DEPARTAMENTO TIPO DUPLEX UBICADO EN EL OCTAVO PISO Y AZOTEA DE UN EDIFICIO DE OCHO PISOS CON AZOTEA Y SEMISÓTANO",
+      "nro_inscritos": 0
+    },
+    "inmuebles_tab": {
+      "distrito_judicial": "LIMA",
+      "departamento": "LIMA",
+      "provincia": "LIMA",
+      "distrito": "SAN BORJA",
+      "inmuebles": [
+        {
+          "partida_registral": "12714204",
+          "tipo_inmueble": "DEPARTAMENTO",
+          "direccion": "DEPARTAMENTO 802, OCTAVO PISO Y AZOTEA, AV. SAN BORJA NORTE NRO. 1187, URB. SAN BORJA, PRIMERA ETAPA",
+          "carga_gravamen": "EN EL ASIENTO D00005 DE LA PARTIDA N° 12714204 DE LOS REGISTROS PÚBLICOS DE LIMA, SE HA INSCRITO UNA HIPOTECA CONSTITUIDA POR CONSTRUCTORA IVALEX S.A.C. A FAVOR DE CAJA MUNICIPAL DE AHORRO Y CRÉDITO DE PIURA S.A.C., HASTA POR LA SUMA DE US$ 466,428.81 CON LA FINALIDAD DE GARANTIZAR EL PRÉSTAMO OTORGADO",
+          "porcentaje_a_remstar": "100%",
+          "imagenes": 0
+        }
+      ]
+    },
+    "cronograma_tab": {
+      "fases": [
+        {
+          "nro": 1,
+          "fase": "Publicación e Inscripcion",
+          "fecha_inicio": "13/02/2026 00:00:00 AM",
+          "fecha_fin": "22/02/2026 23:59:59 PM"
+        },
+        {
+          "nro": 2,
+          "fase": "Validación de Inscripción",
+          "fecha_inicio": "23/02/2026 00:00:00 AM",
+          "fecha_fin": "25/02/2026 23:59:59 PM"
+        },
+        {
+          "nro": 3,
+          "fase": "Presentación de Ofertas",
+          "fecha_inicio": "26/02/2026 12:00:00 PM",
+          "fecha_fin": "27/02/2026 11:59:59 AM"
+        },
+        {
+          "nro": 4,
+          "fase": "Pago Saldo",
+          "fecha_inicio": "02/03/2026 00:00:00 AM",
+          "fecha_fin": "04/03/2026 23:59:59 PM"
+        },
+        {
+          "nro": 5,
+          "fase": "Validación del Saldo",
+          "fecha_inicio": "05/03/2026 00:00:00 AM",
+          "fecha_fin": "09/03/2026 23:59:59 PM"
+        }
+      ]
+    }
+  },
+  "seguimiento_example": {
+    "url": "https://remaju.pj.gob.pe/remaju/pages/publico/mostrarSeguimientoRemate.xhtml",
+    "expediente": {
+      "nro_expediente": "15700-2023-0-1817-JR-CO-07",
+      "distrito_judicial": "LIMA",
+      "especialidad": "COMERCIAL",
+      "instancia": "JUZGADO ESPECIALIZADO",
+      "organo_jurisdiccional": "7°JUZGADO CIVIL-COMERCIAL"
+    },
+    "seguimiento": {
+      "nro_convocatoria": "PRIMERA CONVOCATORIA",
+      "fecha_registro": "12/02/2026",
+      "procesado_por": "ORDEN JUDICIAL",
+      "reanudado": "NO",
+      "fase_convocatoria": "Publicación e Inscripcion",
+      "estado_convocatoria": "En proceso"
+    }
+  },
+  "pagination": {
+    "current_page": 1,
+    "total_pages": 5,
+    "total_records": 197,
+    "records_per_page": 4,
+    "page_numbers": [1, 2, 3, 4, 5],
+    "next_button_available": true
+  },
+  "saved_files": {
+    "page_1_list": "tests/data/remate_externo_list_page1.html",
+    "page_2_list": "tests/data/remate_externo_list_page2.html",
+    "detail_page": "tests/data/detalle_remate_22096_full.html",
+    "seguimiento_page": "tests/data/seguimiento_remate_22096.html"
+  },
+  "important_selectors": {
+    "remate_cards": "[id*='listaRemate:'][id*='j_idt125']",
+    "detalle_button": "formBuscarRemateExterno:listaRemate:{index}:j_idt165",
+    "seguimiento_button": "formBuscarRemateExterno:listaRemate:{index}:j_idt164",
+    "aviso_button": "formBuscarRemateExterno:listaRemate:{index}:j_idt167",
+    "paginator": "formBuscarRemateExterno:listaRemate_paginator_bottom",
+    "page_numbers": ".ui-paginator-page",
+    "view_state": "input[name='javax.faces.ViewState']"
+  },
+  "urls": {
+    "list_page": "https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml",
+    "detail_page": "https://remaju.pj.gob.pe/remaju/pages/publico/mostrarDetalleRemate.xhtml",
+    "seguimiento_page": "https://remaju.pj.gob.pe/remaju/pages/publico/mostrarSeguimientoRemate.xhtml"
+  }
+}
