@@ -204,7 +204,21 @@ class RemajuDownloader:
             self.current_view_state = self._extract_view_state(base_html)
 
             if not self.current_view_state:
-                print(f"  ⚠ Could not extract ViewState from detail page")
+                # Check if we hit CAPTCHA
+                if self._has_captcha(base_html):
+                    print("  ⚠ CAPTCHA detected, trying browser...")
+                    if self.browser_downloader:
+                        try:
+                            html, session_data = self.browser_downloader.get_page(
+                                self.DETAIL_URL
+                            )
+                            self._update_session_from_browser(session_data)
+                            self.current_view_state = self._extract_view_state(html)
+                            if self.current_view_state:
+                                print("  ✓ Got page via browser")
+                                return html
+                        except Exception as e:
+                            print(f"  ❌ Browser failed: {e}")
                 return None
 
         except Exception as e:
@@ -340,7 +354,21 @@ class RemajuDownloader:
             self.current_view_state = self._extract_view_state(base_html)
 
             if not self.current_view_state:
-                print(f"  ⚠ Could not extract ViewState from seguimiento page")
+                # Check if we hit CAPTCHA
+                if self._has_captcha(base_html):
+                    print("  ⚠ CAPTCHA detected, trying browser...")
+                    if self.browser_downloader:
+                        try:
+                            html, session_data = self.browser_downloader.get_page(
+                                self.SEGUIMIENTO_URL
+                            )
+                            self._update_session_from_browser(session_data)
+                            self.current_view_state = self._extract_view_state(html)
+                            if self.current_view_state:
+                                print("  ✓ Got page via browser")
+                                return html
+                        except Exception as e:
+                            print(f"  ❌ Browser failed: {e}")
                 return None
 
         except Exception as e:
