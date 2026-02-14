@@ -218,6 +218,284 @@ class CaptchaSolver:
         """Synchronous wrapper for solve_and_get_session."""
         return asyncio.run(self.solve_and_get_session(url))
 
+    def solve_with_click(
+        self, url: str, remate_id: str
+    ) -> Optional[tuple[str, SessionData]]:
+        """Navigate to URL and click the Detalle button for a specific remate.
+
+        This is needed because detail pages require navigation from the list page.
+
+        Args:
+            url: The list page URL
+            remate_id: The remate number to click on
+
+        Returns:
+            Tuple of (html_content, session_data)
+        """
+        return asyncio.run(self._solve_with_click_async(url, remate_id))
+
+    def solve_with_seguimiento_click(
+        self, url: str, remate_id: str
+    ) -> Optional[tuple[str, SessionData]]:
+        """Navigate to URL and click the Seguimiento button for a specific remate.
+
+        This is needed because seguimiento pages require navigation from the list page.
+
+        Args:
+            url: The list page URL
+            remate_id: The remate number to click on
+
+        Returns:
+            Tuple of (html_content, session_data)
+        """
+        return asyncio.run(self._solve_with_seguimiento_click_async(url, remate_id))
+
+    async def _solve_with_click_async(
+        self, url: str, remate_id: str
+    ) -> Optional[tuple[str, SessionData]]:
+        """Async version of solve_with_click."""
+        print(f"🌐 Opening browser (headless={self.headless})...")
+        async with async_playwright() as p:
+            print("   Launching Chromium...")
+            browser = await p.chromium.launch(
+                headless=self.headless,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-dev-shm-usage",
+                    "--no-sandbox",
+                ],
+            )
+            print("   ✓ Browser launched")
+
+            context = await browser.new_context(
+                viewport={"width": 1920, "height": 1080},
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+            )
+
+            # Load cookies if available
+            saved_cookies = self._load_cookies()
+            if saved_cookies:
+                await context.add_cookies(saved_cookies)
+                print("✓ Loaded saved cookies")
+
+            page = await context.new_page()
+
+            # Add stealth script
+            await page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+                Object.defineProperty(navigator, 'plugins', {
+                    get: () => [1, 2, 3, 4, 5]
+                });
+                window.chrome = { runtime: {} };
+            """)
+
+            print(f"🌐 Navigating to list page...")
+            await page.goto(url, wait_until="load", timeout=60000)
+
+            html = await page.content()
+
+            if self._has_captcha(html):
+                print("🛡️  CAPTCHA detected, solving...")
+                success = await self._solve_captcha(page)
+                if not success:
+                    print("❌ Failed to solve CAPTCHA")
+                    await browser.close()
+                    return None
+                print("✓ CAPTCHA solved successfully")
+
+                # Submit the form
+                print("📤 Submitting form...")
+                try:
+                    await page.click('input[type="submit"]')
+                    await page.wait_for_load_state("networkidle")
+                    print("✓ Form submitted, page loaded")
+                except Exception as e:
+                    print(f"⚠ Error submitting form: {e}")
+
+                html = await page.content()
+            else:
+                print("✓ No CAPTCHA detected")
+
+            # Now click the Detalle button for the specific remate
+            print(f"🖱️  Clicking Detalle button for remate {remate_id}...")
+
+            # Find the Detalle button - it has text "Detalle"
+            try:
+                # Wait for the page to fully load
+                await page.wait_for_load_state("networkidle")
+
+                # Find all buttons with "Detalle" text
+                buttons = await page.query_selector_all("button")
+                for button in buttons:
+                    text = await button.text_content()
+                    if text and "Detalle" in text:
+                        print(f"   Found Detalle button: {text.strip()}")
+                        # Click this button
+                        await button.click()
+                        print("✓ Clicked Detalle button")
+                        # Wait for navigation to complete
+                        await page.wait_for_load_state("networkidle")
+                        # Wait for the detail page to load
+                        await asyncio.sleep(3)
+                        break
+            except Exception as e:
+                print(f"⚠ Error clicking Detalle button: {e}")
+
+            # Get the final HTML
+            html = await page.content()
+
+            # Check if we got the detail page
+            if "pgDetalleRemate" in html or "formDetalleRemate" in html:
+                print("✓ Got detail page")
+
+                # Wait for tab content to load
+                print("   Waiting for tab content to load...")
+                await asyncio.sleep(2)
+
+                # Try to click on each tab to ensure content loads
+                try:
+                    # Click on Inmuebles tab
+                    tab_links = await page.query_selector_all("a[href*='tbInmuebles']")
+                    for link in tab_links:
+                        await link.click()
+                        await asyncio.sleep(1)
+                        print("   Clicked Inmuebles tab")
+                        break
+
+                    # Click on Cronograma tab
+                    tab_links = await page.query_selector_all("a[href*='tbCronograma']")
+                    for link in tab_links:
+                        await link.click()
+                        await asyncio.sleep(1)
+                        print("   Clicked Cronograma tab")
+                        break
+                except Exception as e:
+                    print(f"⚠ Error clicking tabs: {e}")
+
+                # Get final HTML after tab clicks
+                html = await page.content()
+            else:
+                print("⚠ Still on list page, trying direct navigation")
+
+            # Extract session data
+            session_data = await self._extract_session_data(page)
+
+            # Save cookies for future use
+            self._save_cookies(session_data.cookies)
+
+            await browser.close()
+            return html, session_data
+
+    async def _solve_with_seguimiento_click_async(
+        self, url: str, remate_id: str
+    ) -> Optional[tuple[str, SessionData]]:
+        """Navigate to URL and click the Seguimiento button for a specific remate."""
+        print(f"🌐 Opening browser (headless={self.headless})...")
+        async with async_playwright() as p:
+            print("   Launching Chromium...")
+            browser = await p.chromium.launch(
+                headless=self.headless,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-dev-shm-usage",
+                    "--no-sandbox",
+                ],
+            )
+            print("   ✓ Browser launched")
+
+            context = await browser.new_context(
+                viewport={"width": 1920, "height": 1080},
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+            )
+
+            # Load cookies if available
+            saved_cookies = self._load_cookies()
+            if saved_cookies:
+                await context.add_cookies(saved_cookies)
+                print("✓ Loaded saved cookies")
+
+            page = await context.new_page()
+
+            # Add stealth script
+            await page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+                Object.defineProperty(navigator, 'plugins', {
+                    get: () => [1, 2, 3, 4, 5]
+                });
+                window.chrome = { runtime: {} };
+            """)
+
+            print(f"🌐 Navigating to list page...")
+            await page.goto(url, wait_until="load", timeout=60000)
+
+            html = await page.content()
+
+            if self._has_captcha(html):
+                print("🛡️  CAPTCHA detected, solving...")
+                success = await self._solve_captcha(page)
+                if not success:
+                    print("❌ Failed to solve CAPTCHA")
+                    await browser.close()
+                    return None
+                print("✓ CAPTCHA solved successfully")
+
+                # Submit the form
+                print("📤 Submitting form...")
+                try:
+                    await page.click('input[type="submit"]')
+                    await page.wait_for_load_state("networkidle")
+                    print("✓ Form submitted, page loaded")
+                except Exception as e:
+                    print(f"⚠ Error submitting form: {e}")
+
+                html = await page.content()
+            else:
+                print("✓ No CAPTCHA detected")
+
+            # Now click the Seguimiento button for the specific remate
+            print(f"🖱️  Clicking Seguimiento button for remate {remate_id}...")
+
+            try:
+                await page.wait_for_load_state("networkidle")
+
+                # Find all buttons with "Seguimiento" text
+                buttons = await page.query_selector_all("button")
+                for button in buttons:
+                    text = await button.text_content()
+                    if text and "Seguimiento" in text:
+                        print(f"   Found Seguimiento button: {text.strip()}")
+                        await button.click()
+                        print("✓ Clicked Seguimiento button")
+                        # Wait longer for navigation
+                        await page.wait_for_load_state("networkidle")
+                        await asyncio.sleep(5)
+                        break
+            except Exception as e:
+                print(f"⚠ Error clicking Seguimiento button: {e}")
+
+            html = await page.content()
+
+            if "formSeguimientoRemate" in html:
+                print("✓ Got seguimiento page")
+            elif "pgNavegacion" in html:
+                # Check if we navigated to a different page
+                if "Seguimiento" in html and "Remate" in html:
+                    print("✓ Got seguimiento page (found in content)")
+                else:
+                    print("⚠ Still on list/navigation page")
+            else:
+                print("⚠ Unexpected page content")
+
+            session_data = await self._extract_session_data(page)
+            self._save_cookies(session_data.cookies)
+
+            await browser.close()
+            return html, session_data
+
 
 class BrowserDownloader:
     """Browser-based downloader that can solve CAPTCHAs."""
@@ -248,6 +526,38 @@ class BrowserDownloader:
 
         html, self.session_data = result
         return html, self.session_data
+
+    def get_detail_page(
+        self, list_page_url: str, remate_id: str
+    ) -> tuple[str, SessionData]:
+        """Navigate from list page to detail page by clicking the Detalle button.
+
+        This is needed because the detail page requires clicking from the list page.
+
+        Args:
+            list_page_url: URL of the list page
+            remate_id: The remate number to click on
+
+        Returns:
+            Tuple of (html_content, session_data)
+        """
+        return self.solver.solve_with_click(list_page_url, remate_id)
+
+    def get_seguimiento_page(
+        self, list_page_url: str, remate_id: str
+    ) -> tuple[str, SessionData]:
+        """Navigate from list page to seguimiento page by clicking the Seguimiento button.
+
+        This is needed because the seguimiento page requires clicking from the list page.
+
+        Args:
+            list_page_url: URL of the list page
+            remate_id: The remate number to click on
+
+        Returns:
+            Tuple of (html_content, session_data)
+        """
+        return self.solver.solve_with_seguimiento_click(list_page_url, remate_id)
 
     def update_session(self, session_data: SessionData):
         """Update stored session data."""

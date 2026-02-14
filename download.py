@@ -196,6 +196,32 @@ class RemajuDownloader:
         """
         print(f"Downloading detail page for remate {remate_id}...")
 
+        # If browser is available, use it to navigate from list to detail page
+        if self.browser_downloader:
+            try:
+                print("  Using browser to navigate from list to detail page...")
+                # Navigate from list page to detail page by clicking
+                html, session_data = self.browser_downloader.get_detail_page(
+                    self.LIST_URL, remate_id
+                )
+                self._update_session_from_browser(session_data)
+
+                # Check if we got valid content
+                if "formDetalleRemate" in html or "pgDetalleRemate" in html:
+                    print("  ✓ Got detail page via browser navigation")
+                    return html
+                elif self._has_captcha(html):
+                    print("  ⚠ CAPTCHA detected, trying to solve...")
+                    # The browser solver should handle CAPTCHA
+                    html, session_data = self.browser_downloader.get_detail_page(
+                        self.LIST_URL, remate_id
+                    )
+                    self._update_session_from_browser(session_data)
+                    return html
+            except Exception as e:
+                print(f"  ⚠ Browser error: {e}")
+                # Fall through to regular method
+
         # First, GET the page to establish session and get ViewState
         try:
             response = self.session.get(self.DETAIL_URL)
@@ -204,21 +230,7 @@ class RemajuDownloader:
             self.current_view_state = self._extract_view_state(base_html)
 
             if not self.current_view_state:
-                # Check if we hit CAPTCHA
-                if self._has_captcha(base_html):
-                    print("  ⚠ CAPTCHA detected, trying browser...")
-                    if self.browser_downloader:
-                        try:
-                            html, session_data = self.browser_downloader.get_page(
-                                self.DETAIL_URL
-                            )
-                            self._update_session_from_browser(session_data)
-                            self.current_view_state = self._extract_view_state(html)
-                            if self.current_view_state:
-                                print("  ✓ Got page via browser")
-                                return html
-                        except Exception as e:
-                            print(f"  ❌ Browser failed: {e}")
+                print(f"  ⚠ Could not extract ViewState from detail page")
                 return None
 
         except Exception as e:
@@ -346,6 +358,31 @@ class RemajuDownloader:
         """
         print(f"Downloading seguimiento page for remate {remate_id}...")
 
+        # If browser is available, use it to navigate from list to seguimiento page
+        if self.browser_downloader:
+            try:
+                print("  Using browser to navigate to seguimiento page...")
+                # Navigate from list page to seguimiento page by clicking
+                html, session_data = self.browser_downloader.get_seguimiento_page(
+                    self.LIST_URL, remate_id
+                )
+                self._update_session_from_browser(session_data)
+
+                # Check if we got valid content
+                if "formSeguimientoRemate" in html or "Seguimiento" in html:
+                    print("  ✓ Got seguimiento page via browser navigation")
+                    return html
+                elif self._has_captcha(html):
+                    print("  ⚠ CAPTCHA detected, solving...")
+                    html, session_data = self.browser_downloader.get_seguimiento_page(
+                        self.LIST_URL, remate_id
+                    )
+                    self._update_session_from_browser(session_data)
+                    return html
+            except Exception as e:
+                print(f"  ⚠ Browser error: {e}")
+                # Fall through to regular method
+
         # First, GET the page to establish session and get ViewState
         try:
             response = self.session.get(self.SEGUIMIENTO_URL)
@@ -354,21 +391,7 @@ class RemajuDownloader:
             self.current_view_state = self._extract_view_state(base_html)
 
             if not self.current_view_state:
-                # Check if we hit CAPTCHA
-                if self._has_captcha(base_html):
-                    print("  ⚠ CAPTCHA detected, trying browser...")
-                    if self.browser_downloader:
-                        try:
-                            html, session_data = self.browser_downloader.get_page(
-                                self.SEGUIMIENTO_URL
-                            )
-                            self._update_session_from_browser(session_data)
-                            self.current_view_state = self._extract_view_state(html)
-                            if self.current_view_state:
-                                print("  ✓ Got page via browser")
-                                return html
-                        except Exception as e:
-                            print(f"  ❌ Browser failed: {e}")
+                print(f"  ⚠ Could not extract ViewState from seguimiento page")
                 return None
 
         except Exception as e:
