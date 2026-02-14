@@ -7,17 +7,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from remaju.new_parser import NewRemajuParser
+from remaju.parser import RemajuParser
 
 
 @pytest.fixture
-def sample_data_dir() -> Path:
-    """Return path to sample data directory."""
-    return Path(__file__).parent.parent / "test_data"
-
-
-@pytest.fixture
-def parser() -> NewRemajuParser:
+def parser() -> RemajuParser:
     """Create a parser instance."""
     return NewRemajuParser()
 

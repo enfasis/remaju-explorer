@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from remaju.new_parser import NewRemajuParser
+from remaju.parser import RemajuParser
 from remaju.models import (
     RemateListItem,
     RemateDetail,
@@ -54,9 +54,9 @@ def cronograma_xml(sample_data_dir) -> str:
 
 
 @pytest.fixture
-def parser() -> NewRemajuParser:
+def parser() -> RemajuParser:
     """Create a parser instance."""
-    return NewRemajuParser()
+    return RemajuParser()
 
 
 class TestParseListXML:

@@ -1,10 +1,9 @@
-"""HTML Parser for REMAJU website using selectolax."""
+"""New parser for REMAJU data downloaded via AJAX requests."""
 
-import logging
 import re
 from datetime import datetime, date
 from typing import List, Optional, Dict, Any
-from selectolax.parser import HTMLParser, Node
+from selectolax.parser import HTMLParser
 
 from .models import (
     RemateListItem,
@@ -14,97 +13,25 @@ from .models import (
     CronogramaTab,
     Inmueble,
     CronogramaFase,
-    Seguimiento,
-    Expediente,
-    SeguimientoData,
 )
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
 
 
 class RemajuParser:
-    """Parser for REMAJU HTML pages."""
+    """Parser for REMAJU AJAX responses and HTML content."""
 
     BASE_URL = "https://remaju.pj.gob.pe"
     LIST_URL = f"{BASE_URL}/remaju/pages/publico/remateExterno.xhtml"
     DETAIL_URL = f"{BASE_URL}/remaju/pages/publico/mostrarDetalleRemate.xhtml"
-    SEGUIMIENTO_URL = f"{BASE_URL}/remaju/pages/publico/mostrarSeguimientoRemate.xhtml"
 
-    def __init__(self, html: str):
-        """Initialize parser with HTML content."""
-        self.tree = HTMLParser(html)
-        logger.info(f"Parser initialized with HTML length: {len(html)}")
+    def __init__(self):
+        """Initialize parser."""
+        pass
 
     def _clean_text(self, text: str) -> str:
         """Clean extracted text."""
         if not text:
             return ""
         return " ".join(text.split())
-
-    def _extract_label_value(self, label_text: str) -> Optional[str]:
-        """Extract value following a label in the HTML.
-
-        Structure: <div class="ui-g">
-                    <div class="ui-panelgrid-cell text-bold">Label</div>
-                    <div class="ui-panelgrid-cell text-justify">Value</div>
-                   </div>
-        """
-        logger.debug(f"Looking for label: '{label_text}'")
-
-        # Find all divs with text-bold class (labels)
-        nodes = self.tree.css(".text-bold")
-        logger.debug(f"Found {len(nodes)} text-bold nodes")
-
-        for i, node in enumerate(nodes):
-            node_text = self._clean_text(node.text())
-
-            # Check if this node matches our label
-            if label_text.lower() in node_text.lower():
-                logger.debug(f"  Found matching label at node {i}: '{node_text}'")
-
-                # Get the parent (should be .ui-g)
-                parent = node.parent
-                if not parent:
-                    continue
-
-                # Get all children divs of the parent
-                children = parent.css("div")
-                logger.debug(f"  Parent has {len(children)} child divs")
-
-                # Find the value div (not text-bold, not the label node)
-                for child in children:
-                    child_classes = child.attributes.get("class") or ""
-                    is_bold = "text-bold" in child_classes
-                    child_text = self._clean_text(child.text())
-
-                    # Skip if this is the label node or if it's bold
-                    if child == node or is_bold:
-                        continue
-
-                    # Skip if text is empty or is the label text
-                    if not child_text or child_text == node_text:
-                        continue
-
-                    # Make sure the text doesn't contain the label
-                    if label_text.lower() in child_text.lower():
-                        # This might be a concatenated node, try to extract just the value
-                        value_text = child_text.replace(node_text, "").strip()
-                        if value_text:
-                            logger.debug(
-                                f"  Extracted value from concatenated: '{value_text}'"
-                            )
-                            return value_text
-                        continue
-
-                    logger.debug(f"  Found value: '{child_text}'")
-                    return child_text
-
-        logger.warning(f"  Label '{label_text}' not found or no value")
-        return None
 
     def _parse_date(self, date_str: str) -> Optional[date]:
         """Parse date string in format DD/MM/YYYY."""
@@ -114,13 +41,11 @@ class RemajuParser:
             return None
 
     def _parse_datetime(self, datetime_str: str) -> Optional[datetime]:
-        """Parse datetime string in format DD/MM/YYYY HH:MM:SS AM/PM."""
+        """Parse datetime string."""
         try:
-            # Handle format like "13/02/2026 00:00:00 AM"
             return datetime.strptime(datetime_str.strip(), "%d/%m/%Y %H:%M:%S %p")
         except ValueError, AttributeError:
             try:
-                # Try alternate format
                 return datetime.strptime(datetime_str.strip(), "%d/%m/%Y %I:%M:%S %p")
             except ValueError, AttributeError:
                 return None
@@ -129,55 +54,50 @@ class RemajuParser:
         """Parse and clean money string."""
         if not money_str:
             return ""
-        # Extract S/. XX,XXX.XX format
         match = re.search(r"S/\.\s*([\d,\.]+)", money_str)
         if match:
             return f"S/. {match.group(1)}"
         return self._clean_text(money_str)
 
-    def parse_list_page(self) -> List[RemateListItem]:
-        """Parse remate list page and return list of remates."""
-        logger.info("Parsing list page...")
+    def _extract_cdata(self, xml: str, element_id: str) -> Optional[str]:
+        """Extract CDATA content from XML response."""
+        pattern = (
+            rf'<update[^>]*id="{re.escape(element_id)}"[^>]*>\s*<!\[CDATA\[(.*?)\]\]>'
+        )
+        match = re.search(pattern, xml, re.DOTALL)
+        if match:
+            return match.group(1)
+        return None
+
+    def parse_list_xml(self, xml: str) -> List[RemateListItem]:
+        """Parse list page XML and extract remate items."""
         remates = []
         seen_remates = set()
 
-        cards = self.tree.css('[id*="listaRemate:"][id*="j_idt"]')
-        logger.info(f"Found {len(cards)} remate cards")
+        cdata = self._extract_cdata(xml, "formBuscarRemateExterno:listaRemate")
+        if not cdata:
+            return remates
 
-        for i, card in enumerate(cards):
-            try:
-                logger.info(f"Parsing card {i + 1}/{len(cards)}...")
-                remate = self._parse_remate_card(card)
-                if remate:
-                    if remate.numero_remate not in seen_remates:
-                        seen_remates.add(remate.numero_remate)
-                        logger.info(f"  Parsed remate: {remate.numero_remate}")
-                        remates.append(remate)
-                    else:
-                        logger.info(
-                            f"  Skipping duplicate remate: {remate.numero_remate}"
-                        )
-                else:
-                    logger.warning(f"  Failed to parse card {i + 1}")
-            except Exception as e:
-                logger.error(f"Error parsing remate card {i + 1}: {e}")
-                continue
+        tree = HTMLParser(cdata)
+        cards = tree.css("div.card.azul")
 
-        logger.info(f"Successfully parsed {len(remates)} unique remates")
+        for card in cards:
+            remate = self._parse_list_card(card)
+            if remate and remate.numero_remate not in seen_remates:
+                seen_remates.add(remate.numero_remate)
+                remates.append(remate)
+
         return remates
 
-    def _parse_remate_card(self, card: Node) -> Optional[RemateListItem]:
-        """Parse a single remate card."""
+    def _parse_list_card(self, card) -> Optional[RemateListItem]:
+        """Parse a single remate card from list."""
         text = self._clean_text(card.text())
-        logger.debug(f"Card text preview: {text[:200]}...")
 
         # Extract numero_remate
         match = re.search(r"Remate N°\s*(\d+)", text)
         if not match:
-            logger.warning("Could not find numero_remate in card")
             return None
         numero_remate = match.group(1)
-        logger.debug(f"Found numero_remate: {numero_remate}")
 
         # Extract convocatoria
         convocatoria_match = re.search(
@@ -189,6 +109,7 @@ class RemajuParser:
         tipo_match = re.search(r"\b(REMATE\s+SIMPLE|REMATE\s+EN\s+MASA)\b", text)
         tipo = tipo_match.group(1) if tipo_match else "REMATE SIMPLE"
 
+        # Extract distrito
         distrito_match = re.search(
             r"fa-map-marker.*?([A-Z][A-Z\sÁÉÍÓÚÑ]+?)(?=Presentación|<|$)",
             text,
@@ -219,10 +140,10 @@ class RemajuParser:
         precio_match = re.search(r"Precio\s*Base\s*S/\.\s*([\d,\.]+)", text)
         precio_base = f"S/. {precio_match.group(1)}" if precio_match else None
 
-        # Extract descripcion (everything after estado/fase until end or next section)
+        # Extract descripcion
         descripcion_match = re.search(
-            r"(?:En\s+proceso|Finalizado|Suspendido|Publicación\s+e\s+Inscripcion)\s+(.+?)(?=Precio\s*Base|$)",
-            text,
+            r"<label>(.+?)</label>",
+            str(card.html),
             re.DOTALL,
         )
         descripcion = (
@@ -242,23 +163,63 @@ class RemajuParser:
             descripcion=descripcion,
         )
 
-    def parse_detail_page(self, numero_remate: str) -> RemateDetail:
-        """Parse detail page and return complete detail."""
-        logger.info(f"Parsing detail page for remate {numero_remate}...")
+    def extract_card_info(self, xml: str) -> List[Dict[str, Any]]:
+        """Extract card info including button IDs from list XML."""
+        cards_info = []
 
-        # Parse Remate tab
-        logger.info("Parsing Remate tab...")
-        remate_tab = self._parse_remate_tab()
+        cdata = self._extract_cdata(xml, "formBuscarRemateExterno:listaRemate")
+        if not cdata:
+            return cards_info
 
-        # Parse Inmuebles tab
-        logger.info("Parsing Inmuebles tab...")
-        inmuebles_tab = self._parse_inmuebles_tab()
+        tree = HTMLParser(cdata)
+        cards = tree.css("div.card.azul")
 
-        # Parse Cronograma tab
-        logger.info("Parsing Cronograma tab...")
-        cronograma_tab = self._parse_cronograma_tab()
+        for card in cards:
+            card_data = {"remate_index": None, "numero_remate": ""}
 
-        detail = RemateDetail(
+            buttons = card.css("button")
+            for btn in buttons:
+                btn_id = btn.attributes.get("id") or ""
+                btn_text = btn.text(deep=True) or ""
+
+                if "Detalle" in btn_text:
+                    match = re.search(
+                        r"formBuscarRemateExterno:listaRemate:(\d+):j_idt", btn_id
+                    )
+                    if match:
+                        card_data["remate_index"] = match.group(1)
+
+            if card_data["remate_index"]:
+                base_id = (
+                    f"formBuscarRemateExterno:listaRemate:{card_data['remate_index']}"
+                )
+                card_data["seguimiento_id"] = f"{base_id}:j_idt168"
+                card_data["detalle_id"] = f"{base_id}:j_idt169"
+
+            card_html = str(card.html)
+            remate_match = re.search(r"Remate N°\s*(\d+)", card_html)
+            if remate_match:
+                card_data["numero_remate"] = remate_match.group(1)
+
+            cards_info.append(card_data)
+
+        return cards_info
+
+    def parse_detail_html(self, html: str, numero_remate: str) -> RemateDetail:
+        """Parse detail page HTML combining base HTML and tab XMLs."""
+        tree = HTMLParser(html)
+
+        remate_tab = self._parse_remate_tab_from_html(tree)
+        inmuebles_tab = InmueblesTab(
+            distrito_judicial="",
+            departamento="",
+            provincia="",
+            distrito="",
+            inmuebles=[],
+        )
+        cronograma_tab = CronogramaTab(fases=[])
+
+        return RemateDetail(
             numero_remate=numero_remate,
             url=self.DETAIL_URL,
             tabs=["Remate", "Inmuebles", "Cronograma"],
@@ -267,83 +228,93 @@ class RemajuParser:
             cronograma_tab=cronograma_tab,
         )
 
-        logger.info(
-            f"Detail parsed successfully with {len(cronograma_tab.fases)} fases"
-        )
-        return detail
+    def _parse_remate_tab_from_html(self, tree: HTMLParser) -> RemateTab:
+        """Parse Remate tab data from HTML."""
 
-    def _parse_remate_tab(self) -> RemateTab:
-        """Parse Remate tab data."""
-        logger.info("Extracting remate tab fields...")
+        def extract_label_value(label_text: str) -> Optional[str]:
+            nodes = tree.css(".text-bold")
+            for node in nodes:
+                node_text = self._clean_text(node.text())
+                if label_text.lower() in node_text.lower():
+                    parent = node.parent
+                    if not parent:
+                        continue
+                    children = parent.css("div")
+                    for child in children:
+                        child_classes = child.attributes.get("class") or ""
+                        is_bold = "text-bold" in child_classes
+                        child_text = self._clean_text(child.text())
+                        if child == node or is_bold:
+                            continue
+                        if not child_text or child_text == node_text:
+                            continue
+                        if label_text.lower() in child_text.lower():
+                            value_text = child_text.replace(node_text, "").strip()
+                            if value_text:
+                                return value_text
+                            continue
+                        return child_text
+            return None
 
-        # Extract all fields using the label-value pairs
-        expediente = self._extract_label_value("Expediente") or ""
-        distrito_judicial = self._extract_label_value("Distrito Judicial") or ""
+        expediente = extract_label_value("Expediente") or ""
+        distrito_judicial = extract_label_value("Distrito Judicial") or ""
         organo_jurisdiccional = (
-            self._extract_label_value("Órgano Jurisdiccional")
-            or self._extract_label_value("Organo Jurisdiccional")
+            extract_label_value("Órgano Jurisdiccional")
+            or extract_label_value("Organo Jurisdiccional")
             or ""
         )
-        instancia = self._extract_label_value("Instancia") or ""
-        juez = self._extract_label_value("Juez") or ""
-        especialista = self._extract_label_value("Especialista") or ""
-        materia = self._extract_label_value("Materia") or ""
-
+        instancia = extract_label_value("Instancia") or ""
+        juez = extract_label_value("Juez") or ""
+        especialista = extract_label_value("Especialista") or ""
+        materia = extract_label_value("Materia") or ""
         resolucion = (
-            self._extract_label_value("Resolución")
-            or self._extract_label_value("Resolucion")
-            or ""
+            extract_label_value("Resolución") or extract_label_value("Resolucion") or ""
         )
         fecha_res_str = (
-            self._extract_label_value("Fecha Resolución")
-            or self._extract_label_value("Fecha Resolucion")
+            extract_label_value("Fecha Resolución")
+            or extract_label_value("Fecha Resolucion")
             or ""
         )
         fecha_resolucion = self._parse_date(fecha_res_str) or date.today()
 
-        # Check for archivo PDF
-        archivo_node = self.tree.css_first('a[href="#"][onclick*="j_idt70"]')
+        archivo_node = tree.css_first('a[href="#"][onclick*="j_idt"]')
         archivo = archivo_node.text() if archivo_node else None
 
-        convocatoria = self._extract_label_value("Convocatoria") or ""
+        convocatoria = extract_label_value("Convocatoria") or ""
 
         tasacion_str = (
-            self._extract_label_value("Tasación")
-            or self._extract_label_value("Tasacion")
-            or ""
+            extract_label_value("Tasación") or extract_label_value("Tasacion") or ""
         )
         tasacion = self._parse_money(tasacion_str)
 
-        precio_base_str = self._extract_label_value("Precio Base") or ""
+        precio_base_str = extract_label_value("Precio Base") or ""
         precio_base = self._parse_money(precio_base_str)
 
-        incremento_str = self._extract_label_value("Incremento entre ofertas") or ""
+        incremento_str = extract_label_value("Incremento entre ofertas") or ""
         incremento = self._parse_money(incremento_str)
 
-        arancel_str = self._extract_label_value("Arancel") or ""
+        arancel_str = extract_label_value("Arancel") or ""
         arancel = self._parse_money(arancel_str)
 
-        oblaje_str = self._extract_label_value("Oblaje") or ""
+        oblaje_str = extract_label_value("Oblaje") or ""
         oblaje = self._parse_money(oblaje_str)
 
         descripcion = (
-            self._extract_label_value("Descripción")
-            or self._extract_label_value("Descripcion")
+            extract_label_value("Descripción")
+            or extract_label_value("Descripcion")
             or ""
         )
 
-        # Extract nro_inscritos
         nro_inscritos_str = (
-            self._extract_label_value("N° inscritos")
-            or self._extract_label_value("Nro inscritos")
+            extract_label_value("N° inscritos")
+            or extract_label_value("Nro inscritos")
             or "0"
         )
         try:
-            nro_inscritos = int(re.search(r"\d+", nro_inscritos_str).group())
+            match = re.search(r"\d+", nro_inscritos_str)
+            nro_inscritos = int(match.group()) if match else 0
         except AttributeError, ValueError:
             nro_inscritos = 0
-
-        logger.info(f"Remate tab parsed: expediente={expediente}, precio={precio_base}")
 
         return RemateTab(
             expediente=expediente,
@@ -366,94 +337,202 @@ class RemajuParser:
             nro_inscritos=nro_inscritos,
         )
 
-    def _extract_cell_value(self, cell) -> str:
-        """Extract value from a table cell, excluding the label span.
+    def _extract_location_from_text(self, text: str) -> tuple[str, str, str]:
+        """Extract departamento, provincia, distrito from address text."""
+        departamento = ""
+        provincia = ""
+        distrito = ""
 
-        Table cells have structure:
-        <td><span class="ui-column-title">Label</span>Value</td>
-        """
-        # Get all text content
-        full_text = self._clean_text(cell.text())
+        if not text:
+            return departamento, provincia, distrito
 
-        # Remove label span text
-        label_span = cell.css_first(".ui-column-title")
-        if label_span:
-            label_text = self._clean_text(label_span.text())
-            # Remove the label text from the full text
-            value = full_text.replace(label_text, "").strip()
-            return value
+        text_upper = text.upper()
 
-        return full_text
+        # Look for "DEPARTAMENTO DE [NAME]" - must be followed by location name (not NRO or number)
+        # Use word boundary to avoid matching "DEPARTAMENTO" as part of address
+        depto_patterns = [
+            r"DEPARTAMENTO\s+DE\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|PROVINCIA|CON\s+UN|\s+Y\s)",
+            r"DEPARTAMENTO\s+DE\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{2,30}?)(?:,|$)",
+        ]
+        for pattern in depto_patterns:
+            depto_match = re.search(pattern, text_upper)
+            if depto_match:
+                candidate = self._clean_text(depto_match.group(1))
+                # Make sure it's not a number or "NRO"
+                if candidate and not re.match(r"^(NRO|\d)", candidate):
+                    departamento = candidate
+                    break
 
-    def _extract_location_row(self) -> Dict[str, str]:
-        """Extract Departamento, Provincia, Distrito from a single row.
+        # Look for "PROVINCIA DE [NAME]"
+        prov_patterns = [
+            r"PROVINCIA\s+DE\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|DEPARTAMENTO|DISTRITO)",
+            r"PROVINCIA\s+DE\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{2,30}?)(?:,|$)",
+        ]
+        for pattern in prov_patterns:
+            prov_match = re.search(pattern, text_upper)
+            if prov_match:
+                candidate = self._clean_text(prov_match.group(1))
+                if candidate and len(candidate) > 2:
+                    provincia = candidate
+                    break
 
-        These three labels appear in the same .ui-g row, so we need special handling.
+        # Look for "DISTRITO DE [NAME]" or just "DISTRITO [NAME]"
+        dist_patterns = [
+            r"DISTRITO\s+DE\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|PROVINCIA)",
+            r"DISTRITO\s+DE\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{2,30}?)(?:,|$)",
+            r"UBICADO\s+EN\s+(?:EL\s+)?(?:DISTRITO\s+)?([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{2,30}?)(?:,|PROVINCIA|$)",
+        ]
+        for pattern in dist_patterns:
+            dist_match = re.search(pattern, text_upper)
+            if dist_match:
+                candidate = self._clean_text(dist_match.group(1))
+                if candidate and len(candidate) > 2:
+                    distrito = candidate
+                    break
 
-        Returns:
-            Dict with departamento, provincia, distrito
-        """
-        result = {"departamento": "", "provincia": "", "distrito": ""}
+        return departamento, provincia, distrito
 
-        # Find all .ui-g rows
-        ui_g_rows = self.tree.css(".ui-g")
+        # Look for "DEPARTAMENTO DE [NAME]"
+        depto_match = re.search(
+            r"DEPARTAMENTO\s+DE\s+([A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|\s+CON)", text, re.IGNORECASE
+        )
+        if depto_match:
+            departamento = self._clean_text(depto_match.group(1))
 
-        for row in ui_g_rows:
-            # Check if this row contains "Departamento"
-            bold_nodes = row.css(".text-bold")
-            labels = [self._clean_text(node.text()) for node in bold_nodes]
+        # Look for "PROVINCIA DE [NAME]"
+        prov_match = re.search(
+            r"PROVINCIA\s+DE\s+([A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|\s+DEPARTAMENTO)",
+            text,
+            re.IGNORECASE,
+        )
+        if prov_match:
+            provincia = self._clean_text(prov_match.group(1))
 
-            if (
-                "Departamento" in labels
-                and "Provincia" in labels
-                and "Distrito" in labels
-            ):
-                logger.debug("Found location row with Departamento/Provincia/Distrito")
+        # Look for "DISTRITO DE [NAME]"
+        dist_match = re.search(
+            r"DISTRITO\s+DE\s+([A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|\s+PROVINCIA)",
+            text,
+            re.IGNORECASE,
+        )
+        if dist_match:
+            distrito = self._clean_text(dist_match.group(1))
 
-                # Get all children divs
-                all_divs = row.css("div")
+        return departamento, provincia, distrito
 
-                for i, div in enumerate(all_divs):
-                    text = self._clean_text(div.text())
-                    is_bold = "text-bold" in (div.attributes.get("class") or "")
+    def parse_inmuebles_xml(self, xml: str) -> InmueblesTab:
+        """Parse inmuebles tab XML."""
+        cdata = self._extract_cdata(xml, "formDetalleRemate:tvResumen")
+        if not cdata:
+            return InmueblesTab(
+                distrito_judicial="",
+                departamento="",
+                provincia="",
+                distrito="",
+                inmuebles=[],
+            )
 
-                    if is_bold:
-                        # This is a label, look at the next non-bold div
-                        if text == "Departamento" and i + 1 < len(all_divs):
-                            result["departamento"] = self._clean_text(
-                                all_divs[i + 1].text()
-                            )
-                        elif text == "Provincia" and i + 1 < len(all_divs):
-                            result["provincia"] = self._clean_text(
-                                all_divs[i + 1].text()
-                            )
-                        elif text == "Distrito" and i + 1 < len(all_divs):
-                            result["distrito"] = self._clean_text(
-                                all_divs[i + 1].text()
-                            )
+        tree = HTMLParser(cdata)
 
-                break
+        # Parse location info from labels
+        distrito_judicial = ""
+        departamento = ""
+        provincia = ""
+        distrito = ""
 
-        return result
+        inmuebles = []
+        table = tree.css_first('[id*="dtResumenInmueble_data"]')
+        if table:
+            rows = table.css("tr")
+            for row in rows:
+                cells = row.css("td")
+                if len(cells) >= 6:
+                    try:
+                        imagenes_text = self._clean_text(cells[5].text())
+                        imagenes_match = re.search(r"(\d+)", imagenes_text)
+                        imagenes = int(imagenes_match.group(1)) if imagenes_match else 0
+                    except ValueError, AttributeError:
+                        imagenes = 0
+
+                    direccion = self._clean_text(cells[2].text())
+                    area_m2 = self._extract_area_from_text(direccion)
+
+                    # Extract location info from direccion
+                    depto, prov, dist = self._extract_location_from_text(direccion)
+                    if depto:
+                        departamento = depto
+                    if prov:
+                        provincia = prov
+                    if dist:
+                        distrito = dist
+
+                    inmueble = Inmueble(
+                        partida_registral=self._clean_text(cells[0].text()),
+                        tipo_inmueble=self._clean_text(cells[1].text()),
+                        direccion=direccion,
+                        carga_gravamen=self._clean_text(cells[3].text())
+                        if len(cells) > 3
+                        else None,
+                        porcentaje_a_remstar=self._clean_text(cells[4].text())
+                        if len(cells) > 4
+                        else "",
+                        imagenes=imagenes,
+                        area_m2=area_m2,
+                        departamento=depto,
+                        provincia=prov,
+                        distrito=dist,
+                    )
+                    inmuebles.append(inmueble)
+
+        return InmueblesTab(
+            distrito_judicial=distrito_judicial,
+            departamento=departamento,
+            provincia=provincia,
+            distrito=distrito,
+            inmuebles=inmuebles,
+        )
+
+    def parse_cronograma_xml(self, xml: str) -> CronogramaTab:
+        """Parse cronograma tab XML."""
+        cdata = self._extract_cdata(xml, "formDetalleRemate:tvResumen")
+        if not cdata:
+            return CronogramaTab(fases=[])
+
+        tree = HTMLParser(cdata)
+
+        fases = []
+        table = tree.css_first('[id*="dtCronograma_data"]')
+        if table:
+            rows = table.css("tr")
+            for row in rows:
+                cells = row.css("td")
+                if len(cells) >= 4:
+                    try:
+                        nro_text = self._clean_text(cells[0].text())
+                        nro = int(nro_text)
+                    except ValueError:
+                        nro = 0
+
+                    fase = CronogramaFase(
+                        nro=nro,
+                        fase=self._clean_text(cells[1].text()),
+                        fecha_inicio=self._parse_datetime(
+                            self._clean_text(cells[2].text())
+                        )
+                        or datetime.now(),
+                        fecha_fin=self._parse_datetime(
+                            self._clean_text(cells[3].text())
+                        )
+                        or datetime.now(),
+                    )
+                    fases.append(fase)
+
+        return CronogramaTab(fases=fases)
 
     def _extract_area_from_text(self, text: str) -> Optional[float]:
-        """Extract area in m2 from text, converting HA to M2 if needed.
-
-        Examples:
-            - "60.28 M2" -> 60.28
-            - "5.9851 HA" -> 59851.0 (5.9851 * 10000)
-            - "1,081.52 M2" -> 1081.52
-
-        Args:
-            text: Text to search for area values
-
-        Returns:
-            Area in square meters or None if not found
-        """
+        """Extract area in m2 from text, converting HA to M2 if needed."""
         if not text:
             return None
 
-        # Pattern for M2 (handles optional commas and decimals)
         m2_pattern = r"([\d,.]+)\s*M2\b"
         m2_match = re.search(m2_pattern, text, re.IGNORECASE)
         if m2_match:
@@ -463,7 +542,6 @@ class RemajuParser:
             except ValueError:
                 pass
 
-        # Pattern for HA (hectares) - convert to m2 (1 HA = 10,000 M2)
         ha_pattern = r"([\d,.]+)\s*HA\b"
         ha_match = re.search(ha_pattern, text, re.IGNORECASE)
         if ha_match:
@@ -475,162 +553,18 @@ class RemajuParser:
 
         return None
 
-    def _parse_inmuebles_tab(self) -> InmueblesTab:
-        """Parse Inmuebles tab data."""
-        logger.info("Extracting inmuebles tab fields...")
-
-        distrito_judicial = self._extract_label_value("Distrito Judicial") or ""
-
-        # Extract Departamento, Provincia, Distrito from the location row
-        location_data = self._extract_location_row()
-        departamento = location_data["departamento"]
-        provincia = location_data["provincia"]
-        distrito = location_data["distrito"]
-
-        logger.info(
-            f"Location: Departamento={departamento}, Provincia={provincia}, Distrito={distrito}"
-        )
-
-        # Parse inmuebles table
-        inmuebles = []
-
-        # Find table rows in the inmuebles datatable
-        table = self.tree.css_first('[id*="dtResumenInmueble_data"]')
-        if table:
-            rows = table.css("tr")
-            logger.info(f"Found {len(rows)} inmueble rows")
-            for i, row in enumerate(rows):
-                cells = row.css("td")
-                if len(cells) >= 6:
-                    try:
-                        imagenes_text = self._extract_cell_value(cells[5])
-                        # Extract just the number from text like "Imagenes0"
-                        imagenes_match = re.search(r"(\d+)", imagenes_text)
-                        imagenes = int(imagenes_match.group(1)) if imagenes_match else 0
-                    except ValueError, AttributeError:
-                        imagenes = 0
-
-                    direccion = self._extract_cell_value(cells[2])
-                    area_m2 = self._extract_area_from_text(direccion)
-
-                    inmueble = Inmueble(
-                        partida_registral=self._extract_cell_value(cells[0]),
-                        tipo_inmueble=self._extract_cell_value(cells[1]),
-                        direccion=direccion,
-                        carga_gravamen=self._extract_cell_value(cells[3])
-                        if len(cells) > 3
-                        else None,
-                        porcentaje_a_remstar=self._extract_cell_value(cells[4])
-                        if len(cells) > 4
-                        else "",
-                        imagenes=imagenes,
-                        area_m2=area_m2,
-                    )
-                    logger.info(f"  Parsed inmueble {i + 1}: {inmueble.tipo_inmueble}")
-                    inmuebles.append(inmueble)
-        else:
-            logger.warning("Inmuebles table not found")
-
-        return InmueblesTab(
-            distrito_judicial=distrito_judicial,
-            departamento=departamento,
-            provincia=provincia,
-            distrito=distrito,
-            inmuebles=inmuebles,
-        )
-
-    def _parse_cronograma_tab(self) -> CronogramaTab:
-        """Parse Cronograma tab data."""
-        logger.info("Extracting cronograma tab fields...")
-
-        fases = []
-
-        # Find table rows in the cronograma datatable
-        table = self.tree.css_first('[id*="dtCronograma_data"]')
-        if table:
-            rows = table.css("tr")
-            logger.info(f"Found {len(rows)} cronograma rows")
-            for i, row in enumerate(rows):
-                cells = row.css("td")
-                if len(cells) >= 4:
-                    try:
-                        nro_text = self._extract_cell_value(cells[0])
-                        nro = int(nro_text)
-                    except ValueError:
-                        nro = 0
-
-                    fase = CronogramaFase(
-                        nro=nro,
-                        fase=self._extract_cell_value(cells[1]),
-                        fecha_inicio=self._parse_datetime(
-                            self._extract_cell_value(cells[2])
-                        )
-                        or datetime.now(),
-                        fecha_fin=self._parse_datetime(
-                            self._extract_cell_value(cells[3])
-                        )
-                        or datetime.now(),
-                    )
-                    logger.info(f"  Parsed fase {i + 1}: {fase.fase}")
-                    fases.append(fase)
-        else:
-            logger.warning("Cronograma table not found")
-
-        return CronogramaTab(fases=fases)
-
-    def parse_seguimiento_page(self) -> Seguimiento:
-        """Parse seguimiento page."""
-        logger.info("Parsing seguimiento page...")
-
-        # Parse expediente section
-        nro_expediente = (
-            self._extract_label_value("N° Expediente")
-            or self._extract_label_value("Nro Expediente")
-            or ""
-        )
-        distrito_judicial = self._extract_label_value("Distrito judicial") or ""
-        especialidad = self._extract_label_value("Especialidad") or ""
-        instancia = self._extract_label_value("Instancia") or ""
-        organo_jurisdiccional = (
-            self._extract_label_value("Órgano Jurisdiccional")
-            or self._extract_label_value("Organo Jurisdiccional")
-            or ""
-        )
-
-        expediente = Expediente(
-            nro_expediente=nro_expediente,
-            distrito_judicial=distrito_judicial,
-            especialidad=especialidad,
-            instancia=instancia,
-            organo_jurisdiccional=organo_jurisdiccional,
-        )
-
-        # Parse seguimiento section
-        nro_convocatoria = (
-            self._extract_label_value("N° Convocatoria")
-            or self._extract_label_value("Nro Convocatoria")
-            or ""
-        )
-        fecha_reg_str = self._extract_label_value("Fecha de registro") or ""
-        fecha_registro = self._parse_date(fecha_reg_str) or date.today()
-        procesado_por = self._extract_label_value("Procesado por") or ""
-        reanudado = self._extract_label_value("¿Reanudado?") or ""
-        fase_convocatoria = self._extract_label_value("Fase convocatoria") or ""
-        estado_convocatoria = self._extract_label_value("Estado convocatoria") or ""
-
-        seguimiento_data = SeguimientoData(
-            nro_convocatoria=nro_convocatoria,
-            fecha_registro=fecha_registro,
-            procesado_por=procesado_por,
-            reanudado=reanudado,
-            fase_convocatoria=fase_convocatoria,
-            estado_convocatoria=estado_convocatoria,
-        )
-
-        logger.info(f"Seguimiento parsed: expediente={nro_expediente}")
-
-        return Seguimiento(
-            url=self.SEGUIMIENTO_URL,
-            expediente=expediente,
-            seguimiento=seguimiento_data,
+    def merge_detail_data(
+        self,
+        base_detail: RemateDetail,
+        inmuebles_tab: InmueblesTab,
+        cronograma_tab: CronogramaTab,
+    ) -> RemateDetail:
+        """Merge tab data into base detail."""
+        return RemateDetail(
+            numero_remate=base_detail.numero_remate,
+            url=base_detail.url,
+            tabs=base_detail.tabs,
+            remate_tab=base_detail.remate_tab,
+            inmuebles_tab=inmuebles_tab,
+            cronograma_tab=cronograma_tab,
         )

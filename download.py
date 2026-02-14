@@ -5,15 +5,22 @@ import re
 import time
 from datetime import date
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 import requests
 
 from src.remaju.captcha_solver import BrowserDownloader
-from src.remaju.new_parser import NewRemajuParser
-from src.remaju.models import Auction, RemateListItem, RemateDetail, Seguimiento
+from src.remaju.parser import RemajuParser
+from src.remaju.models import (
+    Auction,
+    RemateListItem,
+    RemateDetail,
+    InmueblesTab,
+    CronogramaTab,
+)
 from src.remaju.geocoding import GeocodingClient
 from src.remaju.exchange import ExchangeRateClient, parse_money_value
+from src.remaju.debug_logger import DebugLogger, init_debug_logger, get_debug_logger
 
 
 class RemajuSiteClient:
@@ -23,7 +30,9 @@ class RemajuSiteClient:
     LIST_URL = f"{BASE_URL}/remaju/pages/publico/remateExterno.xhtml"
     DETAIL_URL = f"{BASE_URL}/remaju/pages/publico/mostrarDetalleRemate.xhtml"
 
-    def __init__(self, headless: bool = False, debug_dir: Optional[Path] = None):
+    def __init__(
+        self, headless: bool = False, debug_logger: Optional[DebugLogger] = None
+    ):
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -34,23 +43,51 @@ class RemajuSiteClient:
             }
         )
         self.view_state = None
-        self.list_view_state = None
         self.browser = BrowserDownloader(headless=headless)
-        self.debug_dir = debug_dir
-        self.debug_counter = 0
-        if debug_dir:
-            debug_dir.mkdir(parents=True, exist_ok=True)
+        self.debug_logger = debug_logger
 
-    def _save_debug(self, name: str, content: str) -> None:
-        """Save debug response to file."""
-        if not self.debug_dir:
-            return
-        self.debug_counter += 1
-        filename = f"{self.debug_counter:03d}_{name}.html"
-        filepath = self.debug_dir / filename
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
-        print(f"    [DEBUG] Saved: {filename}")
+    def _make_request(
+        self,
+        method: str,
+        url: str,
+        headers: Optional[dict] = None,
+        data: Optional[dict] = None,
+        auction_number: Optional[str] = None,
+        request_type: str = "request",
+    ) -> Tuple[requests.Response, int]:
+        """Make HTTP request with debug logging.
+
+        Returns:
+            Tuple of (response, request_number)
+        """
+        request_num = 0
+        if self.debug_logger and self.debug_logger.enabled:
+            request_num = self.debug_logger.log_request(
+                url=url,
+                method=method,
+                headers={**self.session.headers, **(headers or {})},
+                payload=data,
+                auction_number=auction_number,
+                request_type=request_type,
+            )
+
+        if method.upper() == "GET":
+            response = self.session.get(url, headers=headers)
+        else:
+            response = self.session.post(url, data=data, headers=headers)
+
+        response.raise_for_status()
+
+        if self.debug_logger and self.debug_logger.enabled:
+            self.debug_logger.log_response(
+                request_num=request_num,
+                response_text=response.text,
+                status_code=response.status_code,
+                auction_number=auction_number,
+                request_type=request_type,
+            )
+
+        return response, request_num
 
     def _extract_view_state(self, html: str) -> str:
         """Extract ViewState from HTML."""
@@ -86,10 +123,10 @@ class RemajuSiteClient:
     def get_list_page(self) -> str:
         """Get initial list page with ViewState."""
         print(f"Fetching {self.LIST_URL}...")
-        response = self.session.get(self.LIST_URL)
-        response.raise_for_status()
+        response, request_num = self._make_request(
+            "GET", self.LIST_URL, request_type="list_init"
+        )
         html = response.text
-        self._save_debug("list_page_initial", html)
 
         if self._has_captcha(html):
             print("CAPTCHA detected, using browser...")
@@ -102,28 +139,17 @@ class RemajuSiteClient:
                     domain=cookie.get("domain", ""),
                     path=cookie.get("path", "/"),
                 )
-            self._save_debug("list_page_captcha", html)
 
         self.view_state = self._extract_view_state(html)
-        self.list_view_state = self.view_state
         return html
 
-    def refresh_list_page(self) -> str:
-        """Refresh list page to get a valid ViewState for list operations."""
-        print("  Refreshing list page to get valid ViewState...")
-        response = self.session.get(self.LIST_URL)
-        response.raise_for_status()
-        html = response.text
-        self._save_debug("list_page_refresh", html)
+    def fetch_page(self, offset: int = 0, rows: int = 4) -> Tuple[str, int]:
+        """Fetch a specific page using AJAX POST.
 
-        self.view_state = self._extract_view_state(html)
-        self.list_view_state = self.view_state
-        return html
-
-    def fetch_page(self, offset: int = 0, rows: int = 4) -> str:
-        """Fetch a specific page using AJAX POST."""
-        view_state = self.list_view_state or self.view_state
-        if not view_state:
+        Returns:
+            Tuple of (xml_response, request_number)
+        """
+        if not self.view_state:
             raise ValueError("No ViewState available. Call get_list_page() first.")
 
         time.sleep(0.5)
@@ -159,7 +185,7 @@ class RemajuSiteClient:
             "formBuscarRemateExterno:j_idt76_active": "0",
             "formBuscarRemateExterno:captcha": "",
             "formBuscarRemateExterno:listaRemate_rppDD": str(rows),
-            "javax.faces.ViewState": view_state,
+            "javax.faces.ViewState": self.view_state,
         }
 
         headers = {
@@ -168,19 +194,29 @@ class RemajuSiteClient:
             "X-Requested-With": "XMLHttpRequest",
         }
 
-        response = self.session.post(self.LIST_URL, data=payload, headers=headers)
-        response.raise_for_status()
+        response, request_num = self._make_request(
+            "POST",
+            self.LIST_URL,
+            headers=headers,
+            data=payload,
+            request_type="list_page",
+        )
         xml = response.text
-        self._save_debug(f"list_page_{offset}", xml)
 
         new_view_state = self._extract_view_state_from_xml(xml)
         if new_view_state:
-            self.list_view_state = new_view_state
+            self.view_state = new_view_state
 
-        return xml
+        return xml, request_num
 
-    def click_detail_button(self, detalle_id: str) -> None:
-        """Click the detail button to register the selection."""
+    def click_detail_button(
+        self, detalle_id: str, auction_number: Optional[str] = None
+    ) -> int:
+        """Click the detail button to register the selection.
+
+        Returns:
+            Request number
+        """
         time.sleep(0.5)
 
         payload = {
@@ -198,24 +234,45 @@ class RemajuSiteClient:
             "X-Requested-With": "XMLHttpRequest",
         }
 
-        response = self.session.post(self.LIST_URL, data=payload, headers=headers)
-        response.raise_for_status()
+        response, request_num = self._make_request(
+            "POST",
+            self.LIST_URL,
+            headers=headers,
+            data=payload,
+            auction_number=auction_number,
+            request_type="detail_click",
+        )
 
         new_view_state = self._extract_view_state_from_xml(response.text)
         if new_view_state:
             self.view_state = new_view_state
 
-    def get_detail_page(self) -> str:
-        """Get the detail page after clicking the detail button."""
-        response = self.session.get(self.DETAIL_URL)
-        response.raise_for_status()
-        html = response.text
-        self._save_debug("detail_page", html)
-        self.view_state = self._extract_view_state(html)
-        return html
+        return request_num
 
-    def fetch_detail_tab(self, tab_name: str) -> str:
-        """Fetch a specific tab from the detail page."""
+    def get_detail_page(self, auction_number: Optional[str] = None) -> Tuple[str, int]:
+        """Get the detail page after clicking the detail button.
+
+        Returns:
+            Tuple of (html, request_number)
+        """
+        response, request_num = self._make_request(
+            "GET",
+            self.DETAIL_URL,
+            auction_number=auction_number,
+            request_type="detail_page",
+        )
+        html = response.text
+        self.view_state = self._extract_view_state(html)
+        return html, request_num
+
+    def fetch_detail_tab(
+        self, tab_name: str, auction_number: Optional[str] = None
+    ) -> Tuple[str, int]:
+        """Fetch a specific tab from the detail page.
+
+        Returns:
+            Tuple of (xml, request_number)
+        """
         if not self.view_state:
             raise ValueError("No ViewState available")
 
@@ -259,15 +316,21 @@ class RemajuSiteClient:
             "X-Requested-With": "XMLHttpRequest",
         }
 
-        response = self.session.post(self.DETAIL_URL, data=payload, headers=headers)
-        response.raise_for_status()
+        response, request_num = self._make_request(
+            "POST",
+            self.DETAIL_URL,
+            headers=headers,
+            data=payload,
+            auction_number=auction_number,
+            request_type=f"detail_tab_{tab_name}",
+        )
         xml = response.text
 
         new_view_state = self._extract_view_state_from_xml(xml)
         if new_view_state:
             self.view_state = new_view_state
 
-        return xml
+        return xml, request_num
 
 
 class RemajuDataService:
@@ -279,13 +342,22 @@ class RemajuDataService:
         enable_geocoding: bool = True,
         enable_exchange: bool = True,
         headless: bool = False,
-        debug_dir: Optional[Path] = None,
+        debug: bool = False,
     ):
         self.output_dir = output_dir
         self.output_dir.mkdir(exist_ok=True)
-        self.debug_dir = debug_dir
-        self.client = RemajuSiteClient(headless=headless, debug_dir=debug_dir)
-        self.parser = NewRemajuParser()
+
+        # Initialize debug logger
+        self.debug_logger = init_debug_logger(
+            enabled=debug, debug_dir=output_dir / "debug"
+        )
+        if debug:
+            print(f"✓ Debug logging enabled: {self.debug_logger.debug_dir}")
+
+        self.client = RemajuSiteClient(
+            headless=headless, debug_logger=self.debug_logger
+        )
+        self.parser = RemajuParser()
         self.geocoding_client = None
         self.exchange_client = None
 
@@ -316,8 +388,16 @@ class RemajuDataService:
             offset = page * rows_per_page
 
             try:
-                xml = self.client.fetch_page(offset, rows_per_page)
+                xml, request_num = self.client.fetch_page(offset, rows_per_page)
                 remates = self.parser.parse_list_xml(xml)
+
+                if self.debug_logger and self.debug_logger.enabled:
+                    self.debug_logger.log_parsed_object(
+                        request_num=request_num,
+                        parsed_object=remates,
+                        request_type="list_page",
+                        object_type="remates_list",
+                    )
 
                 if not remates:
                     print(f"No remates found on page {page + 1}, stopping")
@@ -343,39 +423,76 @@ class RemajuDataService:
         """Download detail data for a remate."""
         print(f"\nDownloading detail for remate {remate.numero_remate}...")
 
-        # Refresh list page to get valid ViewState before fetching card info
-        self.client.refresh_list_page()
-
         cards_info = self._get_cards_info()
-        if self.debug_dir:
-            debug_file = self.debug_dir / f"cards_info_{remate.numero_remate}.json"
-            with open(debug_file, "w", encoding="utf-8") as f:
-                json.dump(cards_info, f, indent=2, ensure_ascii=False)
-            print(f"    [DEBUG] Saved cards info: {debug_file.name}")
-
         card_info = next(
             (c for c in cards_info if c["numero_remate"] == remate.numero_remate), None
         )
 
         if not card_info:
             print(f"⚠ Could not find card info for remate {remate.numero_remate}")
-            print(f"    Available remates: {[c['numero_remate'] for c in cards_info]}")
             return self._create_empty_detail(remate.numero_remate)
 
-        self.client.click_detail_button(card_info["detalle_id"])
-        detail_html = self.client.get_detail_page()
+        auction_num = remate.numero_remate
+        debug = get_debug_logger()
+
+        self.client.click_detail_button(
+            card_info["detalle_id"], auction_number=auction_num
+        )
+        detail_html, detail_req_num = self.client.get_detail_page(
+            auction_number=auction_num
+        )
 
         base_detail = self.parser.parse_detail_html(detail_html, remate.numero_remate)
 
-        inmuebles_xml = self.client.fetch_detail_tab("inmuebles")
+        if debug and debug.enabled:
+            debug.log_parsed_object(
+                request_num=detail_req_num,
+                parsed_object=base_detail,
+                auction_number=auction_num,
+                request_type="detail_page",
+                object_type="remate_tab",
+            )
+
+        inmuebles_xml, inmuebles_req_num = self.client.fetch_detail_tab(
+            "inmuebles", auction_number=auction_num
+        )
         inmuebles_tab = self.parser.parse_inmuebles_xml(inmuebles_xml)
 
-        cronograma_xml = self.client.fetch_detail_tab("cronograma")
+        if debug and debug.enabled:
+            debug.log_parsed_object(
+                request_num=inmuebles_req_num,
+                parsed_object=inmuebles_tab,
+                auction_number=auction_num,
+                request_type="detail_tab_inmuebles",
+                object_type="inmuebles_tab",
+            )
+
+        cronograma_xml, cronograma_req_num = self.client.fetch_detail_tab(
+            "cronograma", auction_number=auction_num
+        )
         cronograma_tab = self.parser.parse_cronograma_xml(cronograma_xml)
+
+        if debug and debug.enabled:
+            debug.log_parsed_object(
+                request_num=cronograma_req_num,
+                parsed_object=cronograma_tab,
+                auction_number=auction_num,
+                request_type="detail_tab_cronograma",
+                object_type="cronograma_tab",
+            )
 
         detail = self.parser.merge_detail_data(
             base_detail, inmuebles_tab, cronograma_tab
         )
+
+        if debug and debug.enabled:
+            debug.log_parsed_object(
+                request_num=detail_req_num,
+                parsed_object=detail,
+                auction_number=auction_num,
+                request_type="detail_page",
+                object_type="full_detail",
+            )
 
         self._geocode_inmuebles(detail)
         self._compute_exchange_rates(detail)
@@ -384,7 +501,7 @@ class RemajuDataService:
 
     def _get_cards_info(self) -> List[Dict[str, Any]]:
         """Get card info including button IDs."""
-        xml = self.client.fetch_page(offset=0, rows=4)
+        xml, _ = self.client.fetch_page(offset=0, rows=4)
         return self.parser.extract_card_info(xml)
 
     def _create_empty_detail(self, numero_remate: str) -> RemateDetail:
@@ -577,20 +694,18 @@ def main():
     )
     parser.add_argument(
         "--debug",
-        type=str,
-        metavar="DIR",
-        help="Enable debug mode and save HTML responses to directory",
+        action="store_true",
+        help="Enable debug logging of requests and responses",
     )
 
     args = parser.parse_args()
 
-    debug_dir = Path(args.debug) if args.debug else None
     service = RemajuDataService(
         output_dir=Path(args.output),
         enable_geocoding=not args.no_geocoding,
         enable_exchange=not args.no_exchange,
         headless=not args.headed,
-        debug_dir=debug_dir,
+        debug=args.debug,
     )
 
     auctions = service.download_auctions(max_pages=args.pages)
