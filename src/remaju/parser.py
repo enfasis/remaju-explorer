@@ -433,11 +433,36 @@ class RemajuParser:
 
         tree = HTMLParser(cdata)
 
-        # Parse location info from labels
-        distrito_judicial = ""
-        departamento = ""
-        provincia = ""
-        distrito = ""
+        # Parse location info from panelgrid labels
+        def extract_label_value(label_text: str) -> str:
+            """Extract value from panelgrid label."""
+            # Find the bold label div
+            for node in tree.css(".text-bold"):
+                node_text = self._clean_text(node.text())
+                if label_text.lower() in node_text.lower():
+                    # Get the parent and find the value div (sibling)
+                    parent = node.parent
+                    if parent:
+                        # The value is in the next sibling div
+                        children = parent.css("div")
+                        for i, child in enumerate(children):
+                            if child == node:
+                                # Look for next non-bold sibling
+                                for next_child in children[i + 1 :]:
+                                    next_classes = (
+                                        next_child.attributes.get("class") or ""
+                                    )
+                                    if "text-bold" not in next_classes:
+                                        value = self._clean_text(next_child.text())
+                                        if value and value != node_text:
+                                            return value
+                                break
+            return ""
+
+        distrito_judicial = extract_label_value("Distrito Judicial")
+        departamento = extract_label_value("Departamento")
+        provincia = extract_label_value("Provincia")
+        distrito = extract_label_value("Distrito")
 
         inmuebles = []
         table = tree.css_first('[id*="dtResumenInmueble_data"]')

@@ -332,6 +332,44 @@ class RemajuSiteClient:
 
         return xml, request_num
 
+    def close_detail_page(self, auction_number: Optional[str] = None) -> int:
+        """Close/clean up detail page by clicking return button.
+
+        This makes a POST request to mostrarDetalleRemate.xhtml
+        to properly clean up the detail view before moving to next auction.
+
+        Returns:
+            Request number
+        """
+        time.sleep(0.5)
+
+        payload = {
+            "javax.faces.partial.ajax": "true",
+            "javax.faces.source": "formDetalleRemate:j_idt171",
+            "javax.faces.partial.execute": "@all",
+            "formDetalleRemate:j_idt171": "formDetalleRemate:j_idt171",
+            "formDetalleRemate": "formDetalleRemate",
+            "formDetalleRemate:tvResumen_activeIndex": "2",
+            "javax.faces.ViewState": self.view_state,
+        }
+
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Faces-Request": "partial/ajax",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+
+        response, request_num = self._make_request(
+            "POST",
+            self.DETAIL_URL,
+            headers=headers,
+            data=payload,
+            auction_number=auction_number,
+            request_type="detail_close",
+        )
+
+        return request_num
+
 
 class RemajuDataService:
     """Service for downloading and processing REMAJU data."""
@@ -375,58 +413,55 @@ class RemajuDataService:
             except ValueError as e:
                 print(f"⚠ Exchange rate disabled: {e}")
 
-    def download_list(
-        self, max_pages: int = 3, rows_per_page: int = 4
-    ) -> List[RemateListItem]:
-        """Download list of remates."""
-        all_remates = []
-        seen_remates = set()
+    def download_page(
+        self, page_num: int, rows_per_page: int = 4
+    ) -> tuple[List[RemateListItem], List[dict]]:
+        """Download a single page of remates.
 
-        self.client.get_list_page()
+        Args:
+            page_num: Page number (0-indexed)
+            rows_per_page: Number of rows per page
 
-        for page in range(max_pages):
-            offset = page * rows_per_page
+        Returns:
+            Tuple of (list of remates, list of card info with button IDs)
+        """
+        offset = page_num * rows_per_page
 
-            try:
+        try:
+            if page_num == 0:
+                # First page is already loaded in get_list_page
                 xml, request_num = self.client.fetch_page(offset, rows_per_page)
-                remates = self.parser.parse_list_xml(xml)
+            else:
+                xml, request_num = self.client.fetch_page(offset, rows_per_page)
 
-                if self.debug_logger and self.debug_logger.enabled:
-                    self.debug_logger.log_parsed_object(
-                        request_num=request_num,
-                        parsed_object=remates,
-                        request_type="list_page",
-                        object_type="remates_list",
-                    )
+            remates = self.parser.parse_list_xml(xml)
+            cards_info = self.parser.extract_card_info(xml)
 
-                if not remates:
-                    print(f"No remates found on page {page + 1}, stopping")
-                    break
-
-                for remate in remates:
-                    if remate.numero_remate not in seen_remates:
-                        seen_remates.add(remate.numero_remate)
-                        all_remates.append(remate)
-
-                print(
-                    f"Page {page + 1}: Found {len(remates)} remates, total: {len(all_remates)}"
+            if self.debug_logger and self.debug_logger.enabled:
+                self.debug_logger.log_parsed_object(
+                    request_num=request_num,
+                    parsed_object=remates,
+                    request_type="list_page",
+                    object_type="remates_list",
                 )
-                time.sleep(1)
+                self.debug_logger.log_parsed_object(
+                    request_num=request_num,
+                    parsed_object=cards_info,
+                    request_type="list_page",
+                    object_type="cards_info",
+                )
 
-            except Exception as e:
-                print(f"Error on page {page + 1}: {e}")
-                break
+            return remates, cards_info
 
-        return all_remates
+        except Exception as e:
+            print(f"Error on page {page_num + 1}: {e}")
+            return [], []
 
-    def download_detail(self, remate: RemateListItem) -> RemateDetail:
+    def download_detail(
+        self, remate: RemateListItem, card_info: Optional[dict]
+    ) -> RemateDetail:
         """Download detail data for a remate."""
         print(f"\nDownloading detail for remate {remate.numero_remate}...")
-
-        cards_info = self._get_cards_info()
-        card_info = next(
-            (c for c in cards_info if c["numero_remate"] == remate.numero_remate), None
-        )
 
         if not card_info:
             print(f"⚠ Could not find card info for remate {remate.numero_remate}")
@@ -481,6 +516,8 @@ class RemajuDataService:
                 object_type="cronograma_tab",
             )
 
+        self.client.close_detail_page(auction_number=auction_num)
+
         detail = self.parser.merge_detail_data(
             base_detail, inmuebles_tab, cronograma_tab
         )
@@ -498,11 +535,6 @@ class RemajuDataService:
         self._compute_exchange_rates(detail)
 
         return detail
-
-    def _get_cards_info(self) -> List[Dict[str, Any]]:
-        """Get card info including button IDs."""
-        xml, _ = self.client.fetch_page(offset=0, rows=4)
-        return self.parser.extract_card_info(xml)
 
     def _create_empty_detail(self, numero_remate: str) -> RemateDetail:
         """Create empty detail when download fails."""
@@ -597,30 +629,78 @@ class RemajuDataService:
 
         print(f"  ✓ Exchange rate applied: 1 PEN = {rate:.4f} USD")
 
-    def download_auctions(self, max_pages: int = 1) -> List[Auction]:
-        """Download complete auction data."""
+    def download_auctions(
+        self, max_pages: int = 1, rows_per_page: int = 4
+    ) -> List[Auction]:
+        """Download complete auction data page by page.
+
+        Flow:
+        - Retrieve page 1, extract all details
+        - Retrieve page 2, extract all details
+        - etc.
+        """
         print("Starting auction download...\n")
 
-        remates = self.download_list(max_pages=max_pages)
-        print(f"\nFound {len(remates)} remates")
+        # Get initial page to establish session
+        self.client.get_list_page()
 
-        auctions = []
-        for i, remate in enumerate(remates, 1):
-            print(f"\n[{i}/{len(remates)}] Processing {remate.numero_remate}...")
-            try:
-                detail = self.download_detail(remate)
-                auction = Auction(
-                    numero_remate=remate.numero_remate,
-                    list_data=remate,
-                    detail=detail,
-                    seguimiento=None,
-                )
-                auctions.append(auction)
-            except Exception as e:
-                print(f"  ⚠ Error: {e}")
-                continue
+        all_auctions = []
 
-        return auctions
+        for page_num in range(max_pages):
+            print(f"\n{'=' * 50}")
+            print(f"Processing Page {page_num + 1}/{max_pages}")
+            print(f"{'=' * 50}")
+
+            # Download current page
+            remates, cards_info = self.download_page(page_num, rows_per_page)
+
+            if not remates:
+                print(f"No remates found on page {page_num + 1}, stopping")
+                break
+
+            print(f"Found {len(remates)} remates on this page")
+
+            # Build lookup for card info
+            cards_by_remate = {
+                card["numero_remate"]: card
+                for card in cards_info
+                if card.get("numero_remate")
+            }
+
+            # Process each remate on this page before moving to next page
+            for i, remate in enumerate(remates, 1):
+                print(f"\n[{i}/{len(remates)}] Processing {remate.numero_remate}...")
+                try:
+                    card_info = cards_by_remate.get(remate.numero_remate)
+                    detail = self.download_detail(remate, card_info)
+                    auction = Auction(
+                        numero_remate=remate.numero_remate,
+                        list_data=remate,
+                        detail=detail,
+                        seguimiento=None,
+                    )
+                    all_auctions.append(auction)
+                    print(f"  ✓ Successfully processed {remate.numero_remate}")
+                except Exception as e:
+                    print(f"  ⚠ Error processing {remate.numero_remate}: {e}")
+                    import traceback
+
+                    traceback.print_exc()
+                    continue
+
+            print(
+                f"\nPage {page_num + 1} complete. Total auctions: {len(all_auctions)}"
+            )
+
+            # Small delay between pages
+            if page_num < max_pages - 1:
+                time.sleep(2)
+
+        print(f"\n{'=' * 50}")
+        print(f"Download complete. Total auctions: {len(all_auctions)}")
+        print(f"{'=' * 50}")
+
+        return all_auctions
 
     def save_auctions(self, auctions: List[Auction], filename: str = "auctions.json"):
         """Save auctions to JSON file."""
