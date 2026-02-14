@@ -15,6 +15,7 @@ from remaju.models import Auction, RemateListItem, RemateDetail, Seguimiento
 from remaju.parser import RemajuParser
 from remaju.geocoding import GeocodingClient
 from remaju.exchange import ExchangeRateClient, parse_money_value
+from remaju.captcha_solver import BrowserDownloader
 from datetime import date
 
 
@@ -26,7 +27,13 @@ class RemajuDownloader:
     DETAIL_URL = f"{BASE_URL}/remaju/pages/publico/mostrarDetalleRemate.xhtml"
     SEGUIMIENTO_URL = f"{BASE_URL}/remaju/pages/publico/mostrarSeguimientoRemate.xhtml"
 
-    def __init__(self, output_dir: Path = Path("data"), enable_geocoding: bool = True):
+    def __init__(
+        self,
+        output_dir: Path = Path("data"),
+        enable_geocoding: bool = True,
+        enable_browser: bool = True,
+        headless: bool = False,
+    ):
         self.output_dir = output_dir
         self.output_dir.mkdir(exist_ok=True)
         self.session = requests.Session()
@@ -39,8 +46,11 @@ class RemajuDownloader:
             }
         )
         self.enable_geocoding = enable_geocoding
+        self.enable_browser = enable_browser
+        self.headless = headless
         self.geocoding_client = None
         self.exchange_client = None
+        self.browser_downloader: Optional[BrowserDownloader] = None
         self.current_view_state = None
 
         if enable_geocoding:
@@ -56,15 +66,74 @@ class RemajuDownloader:
         except ValueError as e:
             print(f"⚠ Exchange rate disabled: {e}")
 
+        if enable_browser:
+            try:
+                self.browser_downloader = BrowserDownloader(
+                    cookies_file=output_dir / "cookies.pkl",
+                    headless=headless,
+                )
+                print("✓ Browser downloader enabled (CAPTCHA solver)")
+            except ValueError as e:
+                print(f"⚠ Browser downloader disabled: {e}")
+
+    def _has_captcha(self, html: str) -> bool:
+        """Check if HTML contains CAPTCHA challenge."""
+        return (
+            "h-captcha" in html.lower()
+            or "hcaptcha" in html.lower()
+            or "Radware" in html
+        )
+
+    def _update_session_from_browser(self, session_data):
+        """Update requests session with browser session data."""
+        # Update headers
+        self.session.headers.update(session_data.headers)
+
+        # Update cookies
+        for cookie in session_data.cookies:
+            self.session.cookies.set(
+                cookie["name"],
+                cookie["value"],
+                domain=cookie.get("domain", ""),
+                path=cookie.get("path", "/"),
+            )
+
     def download_list_page(self) -> Optional[str]:
         """Download the auction list page."""
         print(f"Downloading list page from {self.LIST_URL}...")
-        response = self.session.get(self.LIST_URL)
-        response.raise_for_status()
-        html = response.text
 
-        self.current_view_state = self._extract_view_state(html)
-        return html
+        # First try with regular requests
+        try:
+            response = self.session.get(self.LIST_URL)
+            response.raise_for_status()
+            html = response.text
+
+            # Check if we got a CAPTCHA page
+            if not self._has_captcha(html):
+                self.current_view_state = self._extract_view_state(html)
+                return html
+
+            print("  ⚠ CAPTCHA detected in response")
+        except Exception as e:
+            print(f"  ⚠ Request failed: {e}")
+
+        # Fall back to browser if enabled
+        if self.browser_downloader:
+            print("  Switching to browser downloader...")
+            try:
+                html, session_data = self.browser_downloader.get_page(self.LIST_URL)
+                self._update_session_from_browser(session_data)
+                self.current_view_state = self._extract_view_state(html)
+                print("  Successfully got page via browser")
+                # Debug: Save HTML to check what's being parsed
+                with open("debug_download.html", "w", encoding="utf-8") as f:
+                    f.write(html)
+                print(f"  HTML saved to debug_download.html (length: {len(html)})")
+                return html
+            except Exception as e:
+                print(f"  Browser download failed: {e}")
+
+        return None
 
     def _extract_view_state(self, html: str) -> Optional[str]:
         """Extract ViewState from HTML."""
@@ -87,7 +156,7 @@ class RemajuDownloader:
         return None
 
     def _make_ajax_post(
-        self, url: str, payload: dict, headers: dict = None
+        self, url: str, payload: dict, headers: Optional[dict] = None
     ) -> requests.Response:
         """Make AJAX POST request with proper headers."""
         post_headers = {
@@ -480,6 +549,12 @@ class RemajuDownloader:
         """
         # Download list page
         list_html = self.download_list_page()
+        if list_html is None:
+            raise RuntimeError(
+                "Failed to download list page. "
+                "CAPTCHA may be blocking access and browser solver is not available. "
+                "Please set GEMINI_API_KEY environment variable to enable CAPTCHA solving."
+            )
         parser = RemajuParser(list_html)
         remates = parser.parse_list_page()
 
@@ -592,12 +667,27 @@ def main():
         action="store_true",
         help="Disable geocoding of inmuebles",
     )
+    parser.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="Disable browser downloader (CAPTCHA solver)",
+    )
+    parser.add_argument(
+        "--headed",
+        action="store_true",
+        help="Run browser in headed mode (visible window)",
+    )
 
     args = parser.parse_args()
 
     # Create downloader
     output_dir = Path(args.output)
-    downloader = RemajuDownloader(output_dir, enable_geocoding=not args.no_geocoding)
+    downloader = RemajuDownloader(
+        output_dir,
+        enable_geocoding=not args.no_geocoding,
+        enable_browser=not args.no_browser,
+        headless=not args.headed,
+    )
 
     # Determine limit (0 means all)
     limit = None if args.limit == 0 else args.limit
