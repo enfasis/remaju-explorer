@@ -164,7 +164,11 @@ class RemajuParser:
         )
 
     def extract_card_info(self, xml: str) -> List[Dict[str, Any]]:
-        """Extract card info including button IDs from list XML."""
+        """Extract card info including button IDs from list XML.
+
+        Dynamically extracts full button IDs based on button text content.
+        Button IDs are dynamic and change between requests.
+        """
         cards_info = []
 
         cdata = self._extract_cdata(xml, "formBuscarRemateExterno:listaRemate")
@@ -175,7 +179,12 @@ class RemajuParser:
         cards = tree.css("div.card.azul")
 
         for card in cards:
-            card_data = {"remate_index": None, "numero_remate": ""}
+            card_data = {
+                "remate_index": None,
+                "numero_remate": "",
+                "seguimiento_id": None,
+                "detalle_id": None,
+            }
 
             buttons = card.css("button")
             for btn in buttons:
@@ -183,18 +192,14 @@ class RemajuParser:
                 btn_text = btn.text(deep=True) or ""
 
                 if "Detalle" in btn_text:
+                    card_data["detalle_id"] = btn_id
                     match = re.search(
                         r"formBuscarRemateExterno:listaRemate:(\d+):j_idt", btn_id
                     )
                     if match:
                         card_data["remate_index"] = match.group(1)
-
-            if card_data["remate_index"]:
-                base_id = (
-                    f"formBuscarRemateExterno:listaRemate:{card_data['remate_index']}"
-                )
-                card_data["seguimiento_id"] = f"{base_id}:j_idt168"
-                card_data["detalle_id"] = f"{base_id}:j_idt169"
+                elif "Seguimiento" in btn_text:
+                    card_data["seguimiento_id"] = btn_id
 
             card_html = str(card.html)
             remate_match = re.search(r"Remate N°\s*(\d+)", card_html)

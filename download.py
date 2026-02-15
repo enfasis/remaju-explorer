@@ -249,19 +249,57 @@ class RemajuSiteClient:
 
         return request_num
 
-    def get_detail_page(self, auction_number: Optional[str] = None) -> Tuple[str, int]:
+    def _is_valid_detail_page(self, html: str) -> bool:
+        """Check if HTML contains expected detail page content."""
+        # Must have the detail form
+        if "formDetalleRemate" not in html:
+            return False
+        # Must have detail page specific content (not homepage)
+        if "BIENVENIDOS A REM@JU" in html or "formInicio" in html:
+            return False
+        # Should have expected labels
+        expected_labels = ["Expediente", "Distrito Judicial", "Tasaci", "Precio Base"]
+        return any(label in html for label in expected_labels)
+
+    def get_detail_page(
+        self, auction_number: Optional[str] = None, max_retries: int = 3
+    ) -> Tuple[str, int]:
         """Get the detail page after clicking the detail button.
+
+        Validates that the response contains expected detail page content.
+        Retries if we get the homepage or invalid response.
 
         Returns:
             Tuple of (html, request_number)
         """
-        response, request_num = self._make_request(
-            "GET",
-            self.DETAIL_URL,
-            auction_number=auction_number,
-            request_type="detail_page",
-        )
-        html = response.text
+        html = ""
+        request_num = 0
+
+        for attempt in range(max_retries):
+            response, request_num = self._make_request(
+                "GET",
+                self.DETAIL_URL,
+                auction_number=auction_number,
+                request_type="detail_page",
+            )
+            html = response.text
+
+            if self._is_valid_detail_page(html):
+                self.view_state = self._extract_view_state(html)
+                return html, request_num
+
+            # Invalid response - might need to wait for session
+            if attempt < max_retries - 1:
+                wait_time = 0.5 * (attempt + 1)
+                print(
+                    f"  ⚠ Invalid detail page (attempt {attempt + 1}/{max_retries}), waiting {wait_time}s..."
+                )
+                time.sleep(wait_time)
+            else:
+                print(
+                    f"  ⚠ Failed to get valid detail page after {max_retries} attempts"
+                )
+
         self.view_state = self._extract_view_state(html)
         return html, request_num
 
