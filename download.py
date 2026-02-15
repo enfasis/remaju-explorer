@@ -19,7 +19,7 @@ from src.remaju.models import (
     CronogramaTab,
 )
 from src.remaju.geocoding import GeocodingClient
-from src.remaju.exchange import ExchangeRateClient, parse_money_value
+from src.remaju.exchange import ExchangeRateClient, parse_money_with_currency
 from src.remaju.debug_logger import DebugLogger, init_debug_logger, get_debug_logger
 
 
@@ -337,6 +337,8 @@ class RemajuSiteClient:
 
         This makes a POST request to mostrarDetalleRemate.xhtml
         to properly clean up the detail view before moving to next auction.
+        The response will be a redirect to the list page, which we need to follow
+        to get a fresh ViewState.
 
         Returns:
             Request number
@@ -367,6 +369,30 @@ class RemajuSiteClient:
             auction_number=auction_number,
             request_type="detail_close",
         )
+
+        response_text = response.text
+
+        # Check if the response contains a redirect
+        if "<redirect" in response_text:
+            # Extract the redirect URL
+            redirect_match = re.search(r'<redirect[^>]*url="([^"]+)"', response_text)
+            if redirect_match:
+                redirect_path = redirect_match.group(1)
+                # Convert to absolute URL if needed
+                if redirect_path.startswith("/"):
+                    redirect_url = f"{self.BASE_URL}{redirect_path}"
+                else:
+                    redirect_url = redirect_path
+
+                # Follow the redirect to the list page
+                list_response, list_request_num = self._make_request(
+                    "GET",
+                    redirect_url,
+                    auction_number=auction_number,
+                    request_type="list_redirect",
+                )
+                # Extract and update ViewState from the list page
+                self.view_state = self._extract_view_state(list_response.text)
 
         return request_num
 
@@ -534,7 +560,57 @@ class RemajuDataService:
         self._geocode_inmuebles(detail)
         self._compute_exchange_rates(detail)
 
+        # Log summary of extracted data
+        self._log_detail_summary(detail)
+
         return detail
+
+    def _log_detail_summary(self, detail: RemateDetail) -> None:
+        """Log summary of extracted money, location and phase data."""
+        remate_tab = detail.remate_tab
+        inmuebles_tab = detail.inmuebles_tab
+        cronograma_tab = detail.cronograma_tab
+
+        # Log money information
+        money_parts = []
+        if remate_tab.precio_base:
+            money_parts.append(f"precio_base: {remate_tab.precio_base}")
+        if remate_tab.tasacion:
+            money_parts.append(f"tasacion: {remate_tab.tasacion}")
+        if remate_tab.arancel:
+            money_parts.append(f"arancel: {remate_tab.arancel}")
+        if remate_tab.oblaje:
+            money_parts.append(f"oblaje: {remate_tab.oblaje}")
+
+        if money_parts:
+            print(f"  Money: {', '.join(money_parts)}")
+        else:
+            print(f"  Money: No amounts found")
+
+        # Log location information
+        location_parts = []
+        if inmuebles_tab.departamento:
+            location_parts.append(f"depto: {inmuebles_tab.departamento}")
+        if inmuebles_tab.provincia:
+            location_parts.append(f"prov: {inmuebles_tab.provincia}")
+        if inmuebles_tab.distrito:
+            location_parts.append(f"dist: {inmuebles_tab.distrito}")
+
+        if location_parts:
+            print(f"  Location: {', '.join(location_parts)}")
+        else:
+            print(f"  Location: Not found")
+
+        # Log phase information
+        if cronograma_tab.fases:
+            current_phase = None
+            for fase in cronograma_tab.fases:
+                current_phase = fase.fase
+            print(
+                f"  Phase: {len(cronograma_tab.fases)} phase(s), current: {current_phase}"
+            )
+        else:
+            print(f"  Phase: No phases found")
 
     def _create_empty_detail(self, numero_remate: str) -> RemateDetail:
         """Create empty detail when download fails."""
@@ -599,35 +675,50 @@ class RemajuDataService:
                 print(f"    Inmueble {i + 1}: ✓ Geocoded ({lat}, {lon})")
 
     def _compute_exchange_rates(self, detail: RemateDetail) -> None:
-        """Compute and store prices in both PEN and USD."""
-        if not self.exchange_client or not detail.remate_tab:
-            return
+        """Compute and store prices in both PEN and USD.
 
-        rate = self.exchange_client.get_pen_to_usd_rate()
-        if not rate:
+        Detects currency from the value string (S/. for PEN, $ for USD)
+        and stores in appropriate fields, computing the conversion if rate available.
+        """
+        if not detail.remate_tab:
             return
 
         remate_tab = detail.remate_tab
+        rate = None
 
-        pen_value = parse_money_value(remate_tab.precio_base)
-        if pen_value:
-            remate_tab.precio_base_pen = pen_value
-            remate_tab.precio_base_usd = pen_value * rate
+        # Get exchange rate if client available
+        if self.exchange_client:
+            rate = self.exchange_client.get_pen_to_usd_rate()
+            if rate:
+                remate_tab.exchange_rate = rate
+                remate_tab.exchange_rate_date = date.today()
 
-        pen_value = parse_money_value(remate_tab.arancel)
-        if pen_value:
-            remate_tab.arancel_pen = pen_value
-            remate_tab.arancel_usd = pen_value * rate
+        def process_money_field(value_str: str, pen_field: str, usd_field: str) -> None:
+            """Process a money field, detect currency and store in appropriate fields."""
+            value, currency = parse_money_with_currency(value_str)
+            if value is None:
+                return
 
-        pen_value = parse_money_value(remate_tab.oblaje)
-        if pen_value:
-            remate_tab.oblaje_pen = pen_value
-            remate_tab.oblaje_usd = pen_value * rate
+            if currency == "PEN":
+                # Value is in PEN
+                setattr(remate_tab, pen_field, value)
+                if rate:
+                    setattr(remate_tab, usd_field, value * rate)
+            elif currency == "USD":
+                # Value is in USD
+                setattr(remate_tab, usd_field, value)
+                if rate:
+                    setattr(remate_tab, pen_field, value / rate)
 
-        remate_tab.exchange_rate = rate
-        remate_tab.exchange_rate_date = date.today()
+        # Process each money field
+        process_money_field(
+            remate_tab.precio_base, "precio_base_pen", "precio_base_usd"
+        )
+        process_money_field(remate_tab.arancel, "arancel_pen", "arancel_usd")
+        process_money_field(remate_tab.oblaje, "oblaje_pen", "oblaje_usd")
 
-        print(f"  ✓ Exchange rate applied: 1 PEN = {rate:.4f} USD")
+        if rate:
+            print(f"  ✓ Exchange rate applied: 1 PEN = {rate:.4f} USD")
 
     def download_auctions(
         self, max_pages: int = 1, rows_per_page: int = 4

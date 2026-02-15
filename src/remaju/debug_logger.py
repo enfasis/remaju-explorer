@@ -20,6 +20,7 @@ class DebugLogger:
         self.enabled = enabled
         self.debug_dir = debug_dir
         self.request_counter = 0
+        self._pending_requests: dict[int, dict] = {}
 
         if enabled:
             self.debug_dir.mkdir(parents=True, exist_ok=True)
@@ -60,25 +61,16 @@ class DebugLogger:
 
         request_num = self._get_next_request_number()
 
-        auction_suffix = (
-            f"_{self._sanitize_filename(auction_number)}" if auction_number else ""
-        )
-        filename = f"{request_num:04d}_{request_type}{auction_suffix}_request.txt"
-        filepath = self.debug_dir / filename
-
-        content = f"""URL: {url}
-Method: {method}
-Timestamp: {datetime.now().isoformat()}
-
-=== HEADERS ===
-{json.dumps(dict(headers), indent=2, default=str)}
-
-=== PAYLOAD ===
-{json.dumps(payload, indent=2, default=str) if payload else "None"}
-"""
-
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
+        # Store request data for later combination with response
+        self._pending_requests[request_num] = {
+            "url": url,
+            "method": method,
+            "headers": dict(headers),
+            "payload": payload,
+            "auction_number": auction_number,
+            "request_type": request_type,
+            "timestamp": datetime.now().isoformat(),
+        }
 
         return request_num
 
@@ -90,7 +82,7 @@ Timestamp: {datetime.now().isoformat()}
         auction_number: Optional[str] = None,
         request_type: str = "request",
     ) -> None:
-        """Log an HTTP response.
+        """Log an HTTP response combined with the request.
 
         Args:
             request_num: Request number from log_request
@@ -105,10 +97,29 @@ Timestamp: {datetime.now().isoformat()}
         auction_suffix = (
             f"_{self._sanitize_filename(auction_number)}" if auction_number else ""
         )
-        filename = f"{request_num:04d}_{request_type}{auction_suffix}_response.txt"
+        filename = f"{request_num:04d}_{request_type}{auction_suffix}.txt"
         filepath = self.debug_dir / filename
 
-        content = f"""Status Code: {status_code}
+        # Get request data
+        req_data = self._pending_requests.pop(request_num, None)
+        if req_data is None:
+            # If no request data, just log the response
+            req_data = {}
+
+        # Build combined content
+        content = f"""=== REQUEST ===
+URL: {req_data.get("url", "Unknown")}
+Method: {req_data.get("method", "Unknown")}
+Timestamp: {req_data.get("timestamp", datetime.now().isoformat())}
+
+=== REQUEST HEADERS ===
+{json.dumps(req_data.get("headers", {}), indent=2, default=str)}
+
+=== REQUEST PAYLOAD ===
+{json.dumps(req_data.get("payload"), indent=2, default=str) if req_data.get("payload") else "None"}
+
+=== RESPONSE ===
+Status Code: {status_code}
 Timestamp: {datetime.now().isoformat()}
 
 === RESPONSE BODY ===

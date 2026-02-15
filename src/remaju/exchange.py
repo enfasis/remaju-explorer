@@ -147,6 +147,38 @@ def parse_money_value(money_str: str) -> Optional[float]:
         return None
 
 
+def parse_money_with_currency(money_str: str) -> tuple[Optional[float], Optional[str]]:
+    """Parse money string and detect currency.
+
+    Args:
+        money_str: Money string like 'S/. 1,163,355.99' or '$ 11,808.00'
+
+    Returns:
+        Tuple of (numeric_value, currency_code) where currency_code is 'PEN' or 'USD'
+    """
+    if not money_str:
+        return None, None
+
+    money_str = money_str.strip()
+
+    # Detect currency
+    currency = None
+    if "S/." in money_str:
+        currency = "PEN"
+    elif "$" in money_str:
+        currency = "USD"
+
+    try:
+        # Remove currency symbols and spaces
+        cleaned = money_str.replace("S/.", "").replace("$", "").replace(" ", "")
+        # Remove commas
+        cleaned = cleaned.replace(",", "")
+        value = float(cleaned)
+        return value, currency
+    except ValueError, TypeError:
+        return None, None
+
+
 # Convenience function
 def get_exchange_rate() -> Optional[float]:
     """Get current PEN to USD exchange rate."""
