@@ -97,7 +97,8 @@ class DebugLogger:
         auction_suffix = (
             f"_{self._sanitize_filename(auction_number)}" if auction_number else ""
         )
-        filename = f"{request_num:04d}_{request_type}{auction_suffix}.txt"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{timestamp}_{request_type}{auction_suffix}.txt"
         filepath = self.debug_dir / filename
 
         # Get request data
@@ -152,7 +153,10 @@ Timestamp: {datetime.now().isoformat()}
         auction_suffix = (
             f"_{self._sanitize_filename(auction_number)}" if auction_number else ""
         )
-        filename = f"{request_num:04d}_{request_type}{auction_suffix}_{object_type}_parsed.json"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = (
+            f"{timestamp}_{request_type}{auction_suffix}_{object_type}_parsed.json"
+        )
         filepath = self.debug_dir / filename
 
         try:

@@ -3,13 +3,21 @@
 import json
 import re
 import time
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
 
 import requests
 
 from src.remaju.captcha_solver import BrowserDownloader
+
+
+def log(message: str) -> None:
+    """Print message with timestamp."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {message}")
+
+
 from src.remaju.parser import RemajuParser
 from src.remaju.models import (
     Auction,
@@ -21,6 +29,12 @@ from src.remaju.models import (
 from src.remaju.geocoding import GeocodingClient
 from src.remaju.exchange import ExchangeRateClient, parse_money_with_currency
 from src.remaju.debug_logger import DebugLogger, init_debug_logger, get_debug_logger
+
+
+class InvalidDetailPageException(Exception):
+    """Raised when we receive an invalid detail page (homepage instead of detail)."""
+
+    pass
 
 
 class RemajuSiteClient:
@@ -122,14 +136,14 @@ class RemajuSiteClient:
 
     def get_list_page(self) -> str:
         """Get initial list page with ViewState."""
-        print(f"Fetching {self.LIST_URL}...")
+        log(f"Fetching {self.LIST_URL}...")
         response, request_num = self._make_request(
             "GET", self.LIST_URL, request_type="list_init"
         )
         html = response.text
 
         if self._has_captcha(html):
-            print("CAPTCHA detected, using browser...")
+            log("CAPTCHA detected, using browser...")
             html, session_data = self.browser.get_page(self.LIST_URL)
             self.session.headers.update(session_data.headers)
             for cookie in session_data.cookies:
@@ -261,47 +275,39 @@ class RemajuSiteClient:
         expected_labels = ["Expediente", "Distrito Judicial", "Tasaci", "Precio Base"]
         return any(label in html for label in expected_labels)
 
-    def get_detail_page(
-        self, auction_number: Optional[str] = None, max_retries: int = 3
-    ) -> Tuple[str, int]:
+    def get_detail_page(self, auction_number: Optional[str] = None) -> Tuple[str, int]:
         """Get the detail page after clicking the detail button.
 
         Validates that the response contains expected detail page content.
-        Retries if we get the homepage or invalid response.
+        Raises InvalidDetailPageException if we get the homepage instead.
 
         Returns:
             Tuple of (html, request_number)
+
+        Raises:
+            InvalidDetailPageException: If we can't get a valid detail page
         """
-        html = ""
-        request_num = 0
+        # Add headers to maintain session context from the AJAX click
+        headers = {
+            "Referer": self.LIST_URL,
+        }
+        response, request_num = self._make_request(
+            "GET",
+            self.DETAIL_URL,
+            headers=headers,
+            auction_number=auction_number,
+            request_type="detail_page",
+        )
+        html = response.text
 
-        for attempt in range(max_retries):
-            response, request_num = self._make_request(
-                "GET",
-                self.DETAIL_URL,
-                auction_number=auction_number,
-                request_type="detail_page",
-            )
-            html = response.text
+        if self._is_valid_detail_page(html):
+            self.view_state = self._extract_view_state(html)
+            return html, request_num
 
-            if self._is_valid_detail_page(html):
-                self.view_state = self._extract_view_state(html)
-                return html, request_num
-
-            # Invalid response - might need to wait for session
-            if attempt < max_retries - 1:
-                wait_time = 0.5 * (attempt + 1)
-                print(
-                    f"  ⚠ Invalid detail page (attempt {attempt + 1}/{max_retries}), waiting {wait_time}s..."
-                )
-                time.sleep(wait_time)
-            else:
-                print(
-                    f"  ⚠ Failed to get valid detail page after {max_retries} attempts"
-                )
-
-        self.view_state = self._extract_view_state(html)
-        return html, request_num
+        # Invalid response - raise exception immediately (no retry)
+        raise InvalidDetailPageException(
+            f"Invalid detail page for auction {auction_number}"
+        )
 
     def fetch_detail_tab(
         self, tab_name: str, auction_number: Optional[str] = None
@@ -370,13 +376,19 @@ class RemajuSiteClient:
 
         return xml, request_num
 
-    def close_detail_page(self, auction_number: Optional[str] = None) -> int:
+    def close_detail_page(
+        self, auction_number: Optional[str] = None, follow_redirect: bool = False
+    ) -> int:
         """Close/clean up detail page by clicking return button.
 
         This makes a POST request to mostrarDetalleRemate.xhtml
         to properly clean up the detail view before moving to next auction.
-        The response will be a redirect to the list page, which we need to follow
-        to get a fresh ViewState.
+
+        Args:
+            auction_number: Associated auction number
+            follow_redirect: If True, follow redirect to list page (use when
+                           done with all auctions on current page). If False,
+                           just extract ViewState from response without navigating.
 
         Returns:
             Request number
@@ -410,29 +422,45 @@ class RemajuSiteClient:
 
         response_text = response.text
 
-        # Check if the response contains a redirect
-        if "<redirect" in response_text:
-            # Extract the redirect URL
+        # Extract ViewState from the response (whether it's a redirect or not)
+        new_view_state = self._extract_view_state_from_xml(response_text)
+        if new_view_state:
+            self.view_state = new_view_state
+
+        # Only follow redirect if explicitly requested (e.g., when done with page)
+        if follow_redirect and "<redirect" in response_text:
             redirect_match = re.search(r'<redirect[^>]*url="([^"]+)"', response_text)
             if redirect_match:
                 redirect_path = redirect_match.group(1)
-                # Convert to absolute URL if needed
-                if redirect_path.startswith("/"):
-                    redirect_url = f"{self.BASE_URL}{redirect_path}"
-                else:
-                    redirect_url = redirect_path
-
-                # Follow the redirect to the list page
-                list_response, list_request_num = self._make_request(
+                redirect_url = (
+                    f"{self.BASE_URL}{redirect_path}"
+                    if redirect_path.startswith("/")
+                    else redirect_path
+                )
+                list_response, _ = self._make_request(
                     "GET",
                     redirect_url,
                     auction_number=auction_number,
                     request_type="list_redirect",
                 )
-                # Extract and update ViewState from the list page
                 self.view_state = self._extract_view_state(list_response.text)
 
         return request_num
+
+    def _reset_session_to_list(self, auction_number: Optional[str] = None) -> None:
+        """Reset session by navigating to list page and extracting fresh ViewState.
+
+        This is needed after a failed detail page fetch to ensure the next
+        auction detail click works properly.
+        """
+        list_response, _ = self._make_request(
+            "GET",
+            self.LIST_URL,
+            auction_number=auction_number,
+            request_type="list_redirect",
+        )
+        self.view_state = self._extract_view_state(list_response.text)
+        log(f"  ✓ Session reset to list page")
 
 
 class RemajuDataService:
@@ -454,7 +482,7 @@ class RemajuDataService:
             enabled=debug, debug_dir=output_dir / "debug"
         )
         if debug:
-            print(f"✓ Debug logging enabled: {self.debug_logger.debug_dir}")
+            log(f"✓ Debug logging enabled: {self.debug_logger.debug_dir}")
 
         self.client = RemajuSiteClient(
             headless=headless, debug_logger=self.debug_logger
@@ -468,14 +496,14 @@ class RemajuDataService:
                 self.geocoding_client = GeocodingClient()
                 print("✓ Geocoding enabled")
             except ValueError as e:
-                print(f"⚠ Geocoding disabled: {e}")
+                log(f"⚠ Geocoding disabled: {e}")
 
         if enable_exchange:
             try:
                 self.exchange_client = ExchangeRateClient()
                 print("✓ Exchange rate enabled")
             except ValueError as e:
-                print(f"⚠ Exchange rate disabled: {e}")
+                log(f"⚠ Exchange rate disabled: {e}")
 
     def download_page(
         self, page_num: int, rows_per_page: int = 4
@@ -518,17 +546,17 @@ class RemajuDataService:
             return remates, cards_info
 
         except Exception as e:
-            print(f"Error on page {page_num + 1}: {e}")
+            log(f"Error on page {page_num + 1}: {e}")
             return [], []
 
     def download_detail(
         self, remate: RemateListItem, card_info: Optional[dict]
     ) -> RemateDetail:
         """Download detail data for a remate."""
-        print(f"\nDownloading detail for remate {remate.numero_remate}...")
+        log(f"\nDownloading detail for remate {remate.numero_remate}...")
 
         if not card_info:
-            print(f"⚠ Could not find card info for remate {remate.numero_remate}")
+            log(f"⚠ Could not find card info for remate {remate.numero_remate}")
             return self._create_empty_detail(remate.numero_remate)
 
         auction_num = remate.numero_remate
@@ -537,9 +565,16 @@ class RemajuDataService:
         self.client.click_detail_button(
             card_info["detalle_id"], auction_number=auction_num
         )
-        detail_html, detail_req_num = self.client.get_detail_page(
-            auction_number=auction_num
-        )
+
+        try:
+            detail_html, detail_req_num = self.client.get_detail_page(
+                auction_number=auction_num
+            )
+        except InvalidDetailPageException as e:
+            log(f"  ✗ Skipping auction {auction_num}: {e}")
+            # Reset session by going back to list page
+            self.client._reset_session_to_list(auction_number=auction_num)
+            return self._create_empty_detail(remate.numero_remate)
 
         base_detail = self.parser.parse_detail_html(detail_html, remate.numero_remate)
 
@@ -580,8 +615,6 @@ class RemajuDataService:
                 object_type="cronograma_tab",
             )
 
-        self.client.close_detail_page(auction_number=auction_num)
-
         detail = self.parser.merge_detail_data(
             base_detail, inmuebles_tab, cronograma_tab
         )
@@ -600,6 +633,10 @@ class RemajuDataService:
 
         # Log summary of extracted data
         self._log_detail_summary(detail)
+
+        # Close detail page to reset session for next auction
+        # Don't follow redirect to stay on current list page
+        self.client.close_detail_page(auction_number=auction_num, follow_redirect=False)
 
         return detail
 
@@ -621,9 +658,9 @@ class RemajuDataService:
             money_parts.append(f"oblaje: {remate_tab.oblaje}")
 
         if money_parts:
-            print(f"  Money: {', '.join(money_parts)}")
+            log(f"  Money: {', '.join(money_parts)}")
         else:
-            print(f"  Money: No amounts found")
+            log(f"  Money: No amounts found")
 
         # Log location information
         location_parts = []
@@ -635,9 +672,9 @@ class RemajuDataService:
             location_parts.append(f"dist: {inmuebles_tab.distrito}")
 
         if location_parts:
-            print(f"  Location: {', '.join(location_parts)}")
+            log(f"  Location: {', '.join(location_parts)}")
         else:
-            print(f"  Location: Not found")
+            log(f"  Location: Not found")
 
         # Log phase information
         if cronograma_tab.fases:
@@ -648,7 +685,7 @@ class RemajuDataService:
                 f"  Phase: {len(cronograma_tab.fases)} phase(s), current: {current_phase}"
             )
         else:
-            print(f"  Phase: No phases found")
+            log(f"  Phase: No phases found")
 
     def _create_empty_detail(self, numero_remate: str) -> RemateDetail:
         """Create empty detail when download fails."""
@@ -692,7 +729,7 @@ class RemajuDataService:
         if not self.geocoding_client or not detail.inmuebles_tab.inmuebles:
             return
 
-        print(f"  Geocoding {len(detail.inmuebles_tab.inmuebles)} inmueble(s)...")
+        log(f"  Geocoding {len(detail.inmuebles_tab.inmuebles)} inmueble(s)...")
 
         for i, inmueble in enumerate(detail.inmuebles_tab.inmuebles):
             if inmueble.latitude and inmueble.longitude:
@@ -710,7 +747,7 @@ class RemajuDataService:
                 lat, lon = result
                 inmueble.latitude = lat
                 inmueble.longitude = lon
-                print(f"    Inmueble {i + 1}: ✓ Geocoded ({lat}, {lon})")
+                log(f"    Inmueble {i + 1}: ✓ Geocoded ({lat}, {lon})")
 
     def _compute_exchange_rates(self, detail: RemateDetail) -> None:
         """Compute and store prices in both PEN and USD.
@@ -756,7 +793,7 @@ class RemajuDataService:
         process_money_field(remate_tab.oblaje, "oblaje_pen", "oblaje_usd")
 
         if rate:
-            print(f"  ✓ Exchange rate applied: 1 PEN = {rate:.4f} USD")
+            log(f"  ✓ Exchange rate applied: 1 PEN = {rate:.4f} USD")
 
     def download_auctions(
         self, max_pages: int = 1, rows_per_page: int = 4
@@ -768,7 +805,7 @@ class RemajuDataService:
         - Retrieve page 2, extract all details
         - etc.
         """
-        print("Starting auction download...\n")
+        log("Starting auction download...\n")
 
         # Get initial page to establish session
         self.client.get_list_page()
@@ -776,18 +813,18 @@ class RemajuDataService:
         all_auctions = []
 
         for page_num in range(max_pages):
-            print(f"\n{'=' * 50}")
-            print(f"Processing Page {page_num + 1}/{max_pages}")
-            print(f"{'=' * 50}")
+            log("=" * 50)
+            log(f"Processing Page {page_num + 1}/{max_pages}")
+            log("=" * 50)
 
             # Download current page
             remates, cards_info = self.download_page(page_num, rows_per_page)
 
             if not remates:
-                print(f"No remates found on page {page_num + 1}, stopping")
+                log(f"No remates found on page {page_num + 1}, stopping")
                 break
 
-            print(f"Found {len(remates)} remates on this page")
+            log(f"Found {len(remates)} remates on this page")
 
             # Build lookup for card info
             cards_by_remate = {
@@ -821,13 +858,19 @@ class RemajuDataService:
                 f"\nPage {page_num + 1} complete. Total auctions: {len(all_auctions)}"
             )
 
+            # Close detail page after processing all auctions on this page
+            if remates:
+                self.client.close_detail_page(
+                    auction_number=remates[-1].numero_remate, follow_redirect=True
+                )
+
             # Small delay between pages
             if page_num < max_pages - 1:
                 time.sleep(2)
 
-        print(f"\n{'=' * 50}")
-        print(f"Download complete. Total auctions: {len(all_auctions)}")
-        print(f"{'=' * 50}")
+        log("=" * 50)
+        log(f"Download complete. Total auctions: {len(all_auctions)}")
+        log("=" * 50)
 
         return all_auctions
 

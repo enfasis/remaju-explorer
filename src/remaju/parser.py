@@ -136,9 +136,14 @@ class RemajuParser:
         estado_match = re.search(r"(En\s+proceso|Finalizado|Suspendido)", text)
         estado = estado_match.group(1) if estado_match else "En proceso"
 
-        # Extract precio_base
-        precio_match = re.search(r"Precio\s*Base\s*S/\.\s*([\d,\.]+)", text)
-        precio_base = f"S/. {precio_match.group(1)}" if precio_match else None
+        # Extract precio_base (handles both PEN "S/." and USD "$" currencies)
+        precio_match = re.search(r"Precio\s*Base\s*(S/\.|\$)\s*([\d,\.]+)", text)
+        if precio_match:
+            currency = precio_match.group(1)
+            amount = precio_match.group(2)
+            precio_base = f"{currency} {amount}"
+        else:
+            precio_base = None
 
         # Extract descripcion
         descripcion_match = re.search(
