@@ -4,8 +4,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+import folium
 import pandas as pd
 import streamlit as st
+from streamlit_folium import st_folium
 
 st.set_page_config(page_title="REMAJU - Mapa de Remates", page_icon="🏛️", layout="wide")
 
@@ -386,10 +388,71 @@ def render_table_view(filtered_df, use_usd):
     available_cols = [c for c in cols if c in display_df.columns]
 
     st.write(f"Mostrando {len(display_df)} inmueble(s)")
-    st.markdown(
-        display_df[available_cols].to_markdown(index=False),
-        unsafe_allow_html=True,
+    st.dataframe(
+        display_df[available_cols],
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "mapa": st.column_config.LinkColumn("Mapa", width="small"),
+            "numero_remate": st.column_config.TextColumn("Remate", width="small"),
+            "expediente": st.column_config.TextColumn("Expediente", width="medium"),
+            "tipo_inmueble": st.column_config.TextColumn("Tipo", width="small"),
+            "departamento": st.column_config.TextColumn("Departamento", width="small"),
+            "provincia": st.column_config.TextColumn("Provincia", width="small"),
+            "distrito": st.column_config.TextColumn("Distrito", width="small"),
+            "direccion": st.column_config.TextColumn("Dirección", width="large"),
+            "precio": st.column_config.TextColumn("Precio Base", width="small"),
+            "arancel_fmt": st.column_config.TextColumn("Arancel", width="small"),
+            "oblaje_fmt": st.column_config.TextColumn("Oblaje", width="small"),
+            "area_m2": st.column_config.NumberColumn("Área m²", width="small"),
+            "fase_actual": st.column_config.TextColumn("Fase", width="medium"),
+            "nro_inscritos": st.column_config.NumberColumn("Inscritos", width="small"),
+        },
     )
+
+
+def render_folium_map(map_df):
+    """Render map using folium with color-coded markers."""
+    if map_df.empty:
+        return
+
+    # Calculate center
+    center_lat = map_df["latitude"].mean()
+    center_lon = map_df["longitude"].mean()
+
+    # Create map
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=5)
+
+    # Convert RGB list to hex color
+    def rgb_to_hex(color_list):
+        if isinstance(color_list, list) and len(color_list) == 3:
+            return "#{:02x}{:02x}{:02x}".format(*color_list)
+        return "#ff0000"
+
+    # Add markers
+    for _, row in map_df.iterrows():
+        color_hex = rgb_to_hex(row.get("color", [255, 0, 0]))
+        folium.CircleMarker(
+            location=[row["latitude"], row["longitude"]],
+            radius=8,
+            popup=folium.Popup(
+                f"<b>Remate:</b> {row['numero_remate']}<br>"
+                f"<b>Precio:</b> S/. {row['price_value']:,.0f}",
+                max_width=200,
+            ),
+            color=color_hex,
+            fill=True,
+            fillColor=color_hex,
+            fillOpacity=0.7,
+        ).add_to(m)
+
+    # Fit bounds to show all markers
+    if len(map_df) > 1:
+        sw = map_df[["latitude", "longitude"]].min().values.tolist()
+        ne = map_df[["latitude", "longitude"]].max().values.tolist()
+        m.fit_bounds([sw, ne])
+
+    st_folium(m, width="100%", height=500)
 
 
 def render_map_table_view(filtered_df, use_usd):
@@ -401,7 +464,7 @@ def render_map_table_view(filtered_df, use_usd):
         map_df = filtered_df.dropna(subset=["latitude", "longitude"])
 
         if not map_df.empty:
-            st.map(map_df[["latitude", "longitude", "color"]])
+            render_folium_map(map_df)
             st.write(f"{len(map_df)} propiedades con coordenadas")
         else:
             st.info("No hay coordenadas disponibles")
@@ -428,9 +491,26 @@ def render_map_table_view(filtered_df, use_usd):
             ]
             available_cols = [c for c in display_cols if c in display_df.columns]
 
-            st.markdown(
-                display_df[available_cols].to_markdown(index=False),
-                unsafe_allow_html=True,
+            st.dataframe(
+                display_df[available_cols],
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "mapa": st.column_config.LinkColumn("Mapa", width="small"),
+                    "numero_remate": st.column_config.TextColumn(
+                        "Remate", width="small"
+                    ),
+                    "tipo_inmueble": st.column_config.TextColumn("Tipo", width="small"),
+                    "departamento": st.column_config.TextColumn(
+                        "Departamento", width="small"
+                    ),
+                    "provincia": st.column_config.TextColumn(
+                        "Provincia", width="small"
+                    ),
+                    "distrito": st.column_config.TextColumn("Distrito", width="small"),
+                    "precio": st.column_config.TextColumn("Precio", width="small"),
+                    "fase_actual": st.column_config.TextColumn("Fase", width="medium"),
+                },
             )
         else:
             st.info("No hay inmuebles")
@@ -513,6 +593,43 @@ def render_detail_section(filtered_df, use_usd):
             )
         with col_f2:
             st.write(f"**Fin:** {remate_data['fecha_fin'].strftime('%d/%m/%Y %H:%M')}")
+
+    # Detail Map - Show only this auction's location
+    if remate_data["latitude"] and remate_data["longitude"]:
+        st.divider()
+        st.subheader(f"📍 Ubicación del Inmueble - {selected_remate}")
+
+        lat, lon = remate_data["latitude"], remate_data["longitude"]
+        m = folium.Map(location=[lat, lon], zoom_start=16)
+
+        # Convert RGB list to hex color
+        color_list = remate_data.get("color", [255, 0, 0])
+        color_hex = "#{:02x}{:02x}{:02x}".format(*color_list)
+
+        folium.Marker(
+            location=[lat, lon],
+            popup=folium.Popup(
+                f"<b>Remate:</b> {remate_data['numero_remate']}<br>"
+                f"<b>Dirección:</b> {remate_data['direccion'][:80]}...<br>"
+                f"<b>Precio:</b> S/. {remate_data['price_value']:,.0f}",
+                max_width=250,
+            ),
+            tooltip="Ver detalles",
+            icon=folium.Icon(color="red", icon="home", prefix="fa"),
+        ).add_to(m)
+
+        # Add a circle around the marker
+        folium.Circle(
+            location=[lat, lon],
+            radius=100,
+            popup="Área aproximada",
+            color=color_hex,
+            fill=True,
+            fill_color=color_hex,
+            fill_opacity=0.2,
+        ).add_to(m)
+
+        st_folium(m, width="100%", height=400)
 
 
 def main():

@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class Inmueble(BaseModel):
@@ -17,9 +17,6 @@ class Inmueble(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     area_m2: Optional[float] = None
-    departamento: Optional[str] = None
-    provincia: Optional[str] = None
-    distrito: Optional[str] = None
 
 
 class CronogramaFase(BaseModel):

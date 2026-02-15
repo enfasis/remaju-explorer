@@ -347,87 +347,6 @@ class RemajuParser:
             nro_inscritos=nro_inscritos,
         )
 
-    def _extract_location_from_text(self, text: str) -> tuple[str, str, str]:
-        """Extract departamento, provincia, distrito from address text."""
-        departamento = ""
-        provincia = ""
-        distrito = ""
-
-        if not text:
-            return departamento, provincia, distrito
-
-        text_upper = text.upper()
-
-        # Look for "DEPARTAMENTO DE [NAME]" - must be followed by location name (not NRO or number)
-        # Use word boundary to avoid matching "DEPARTAMENTO" as part of address
-        depto_patterns = [
-            r"DEPARTAMENTO\s+DE\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|PROVINCIA|CON\s+UN|\s+Y\s)",
-            r"DEPARTAMENTO\s+DE\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{2,30}?)(?:,|$)",
-        ]
-        for pattern in depto_patterns:
-            depto_match = re.search(pattern, text_upper)
-            if depto_match:
-                candidate = self._clean_text(depto_match.group(1))
-                # Make sure it's not a number or "NRO"
-                if candidate and not re.match(r"^(NRO|\d)", candidate):
-                    departamento = candidate
-                    break
-
-        # Look for "PROVINCIA DE [NAME]"
-        prov_patterns = [
-            r"PROVINCIA\s+DE\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|DEPARTAMENTO|DISTRITO)",
-            r"PROVINCIA\s+DE\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{2,30}?)(?:,|$)",
-        ]
-        for pattern in prov_patterns:
-            prov_match = re.search(pattern, text_upper)
-            if prov_match:
-                candidate = self._clean_text(prov_match.group(1))
-                if candidate and len(candidate) > 2:
-                    provincia = candidate
-                    break
-
-        # Look for "DISTRITO DE [NAME]" or just "DISTRITO [NAME]"
-        dist_patterns = [
-            r"DISTRITO\s+DE\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|PROVINCIA)",
-            r"DISTRITO\s+DE\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{2,30}?)(?:,|$)",
-            r"UBICADO\s+EN\s+(?:EL\s+)?(?:DISTRITO\s+)?([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{2,30}?)(?:,|PROVINCIA|$)",
-        ]
-        for pattern in dist_patterns:
-            dist_match = re.search(pattern, text_upper)
-            if dist_match:
-                candidate = self._clean_text(dist_match.group(1))
-                if candidate and len(candidate) > 2:
-                    distrito = candidate
-                    break
-
-        return departamento, provincia, distrito
-
-        # Look for "DEPARTAMENTO DE [NAME]"
-        depto_match = re.search(
-            r"DEPARTAMENTO\s+DE\s+([A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|\s+CON)", text, re.IGNORECASE
-        )
-        if depto_match:
-            departamento = self._clean_text(depto_match.group(1))
-
-        # Look for "PROVINCIA DE [NAME]"
-        prov_match = re.search(
-            r"PROVINCIA\s+DE\s+([A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|\s+DEPARTAMENTO)",
-            text,
-            re.IGNORECASE,
-        )
-        if prov_match:
-            provincia = self._clean_text(prov_match.group(1))
-
-        # Look for "DISTRITO DE [NAME]"
-        dist_match = re.search(
-            r"DISTRITO\s+DE\s+([A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|\s+PROVINCIA)",
-            text,
-            re.IGNORECASE,
-        )
-        if dist_match:
-            distrito = self._clean_text(dist_match.group(1))
-
-        return departamento, provincia, distrito
 
     def parse_inmuebles_xml(self, xml: str) -> InmueblesTab:
         """Parse inmuebles tab XML."""
@@ -491,15 +410,7 @@ class RemajuParser:
                     direccion = self._clean_text(cells[2].text())
                     area_m2 = self._extract_area_from_text(direccion)
 
-                    # Extract location info from direccion
-                    depto, prov, dist = self._extract_location_from_text(direccion)
-                    if depto:
-                        departamento = depto
-                    if prov:
-                        provincia = prov
-                    if dist:
-                        distrito = dist
-
+                    # Fallback to inmuebles_tab level location if not found in address
                     inmueble = Inmueble(
                         partida_registral=self._clean_text(cells[0].text()),
                         tipo_inmueble=self._clean_text(cells[1].text()),
@@ -512,9 +423,6 @@ class RemajuParser:
                         else "",
                         imagenes=imagenes,
                         area_m2=area_m2,
-                        departamento=depto,
-                        provincia=prov,
-                        distrito=dist,
                     )
                     inmuebles.append(inmueble)
 
