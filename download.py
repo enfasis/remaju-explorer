@@ -59,6 +59,8 @@ class RemajuSiteClient:
         self.view_state = None
         self.browser = BrowserDownloader(headless=headless)
         self.debug_logger = debug_logger
+        self.detail_regresar_id = None
+        self.detail_active_index = "0"
 
     def _make_request(
         self,
@@ -275,6 +277,18 @@ class RemajuSiteClient:
         expected_labels = ["Expediente", "Distrito Judicial", "Tasaci", "Precio Base"]
         return any(label in html for label in expected_labels)
 
+    def _extract_regresar_button_id(self, html: str) -> Optional[str]:
+        """Extract the Regresar button ID from detail page HTML."""
+        # Find all buttons and look for one with "Regresar" text
+        pattern = r'<button[^>]*id="(formDetalleRemate:j_idt\d+)"[^>]*>(.*?)</button>'
+        matches = re.findall(pattern, html, re.IGNORECASE | re.DOTALL)
+
+        for btn_id, content in matches:
+            if "Regresar" in content:
+                return btn_id
+
+        return None
+
     def get_detail_page(self, auction_number: Optional[str] = None) -> Tuple[str, int]:
         """Get the detail page after clicking the detail button.
 
@@ -302,6 +316,12 @@ class RemajuSiteClient:
 
         if self._is_valid_detail_page(html):
             self.view_state = self._extract_view_state(html)
+            # Extract and store the Regresar button ID for later use
+            regresar_id = self._extract_regresar_button_id(html)
+            if regresar_id:
+                self.detail_regresar_id = regresar_id
+            # Reset active index when loading new detail page
+            self.detail_active_index = "0"
             return html, request_num
 
         # Invalid response - raise exception immediately (no retry)
@@ -374,6 +394,9 @@ class RemajuSiteClient:
         if new_view_state:
             self.view_state = new_view_state
 
+        # Update the active index to track which tab we're on
+        self.detail_active_index = config["activeIndex"]
+
         return xml, request_num
 
     def close_detail_page(
@@ -395,13 +418,17 @@ class RemajuSiteClient:
         """
         time.sleep(0.5)
 
+        # Use stored Regresar button ID or fallback to default
+        regresar_id = self.detail_regresar_id or "formDetalleRemate:j_idt163"
+        active_index = self.detail_active_index or "0"
+
         payload = {
             "javax.faces.partial.ajax": "true",
-            "javax.faces.source": "formDetalleRemate:j_idt171",
+            "javax.faces.source": regresar_id,
             "javax.faces.partial.execute": "@all",
-            "formDetalleRemate:j_idt171": "formDetalleRemate:j_idt171",
+            regresar_id: regresar_id,
             "formDetalleRemate": "formDetalleRemate",
-            "formDetalleRemate:tvResumen_activeIndex": "2",
+            "formDetalleRemate:tvResumen_activeIndex": active_index,
             "javax.faces.ViewState": self.view_state,
         }
 
@@ -421,11 +448,6 @@ class RemajuSiteClient:
         )
 
         response_text = response.text
-
-        # Extract ViewState from the response (whether it's a redirect or not)
-        new_view_state = self._extract_view_state_from_xml(response_text)
-        if new_view_state:
-            self.view_state = new_view_state
 
         # Only follow redirect if explicitly requested (e.g., when done with page)
         if follow_redirect and "<redirect" in response_text:
