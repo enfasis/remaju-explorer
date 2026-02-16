@@ -13,6 +13,7 @@ from .models import (
     CronogramaTab,
     Inmueble,
     CronogramaFase,
+    Seguimiento,
 )
 
 
@@ -347,7 +348,6 @@ class RemajuParser:
             nro_inscritos=nro_inscritos,
         )
 
-
     def parse_inmuebles_xml(self, xml: str) -> InmueblesTab:
         """Parse inmuebles tab XML."""
         cdata = self._extract_cdata(xml, "formDetalleRemate:tvResumen")
@@ -510,4 +510,111 @@ class RemajuParser:
             remate_tab=base_detail.remate_tab,
             inmuebles_tab=inmuebles_tab,
             cronograma_tab=cronograma_tab,
+        )
+
+    def parse_seguimiento_html(self, html: str, numero_remate: str) -> "Seguimiento":
+        """Parse seguimiento page HTML."""
+        from .models import Seguimiento, Expediente, SeguimientoEvento
+
+        tree = HTMLParser(html)
+
+        def extract_label_value_from_card(card, label_text: str) -> str:
+            """Extract value from label within a specific card."""
+            for node in card.css(".text-bold"):
+                node_text = self._clean_text(node.text())
+                if label_text.lower() in node_text.lower():
+                    parent = node.parent
+                    if parent:
+                        children = parent.css("div")
+                        for i, child in enumerate(children):
+                            if child == node:
+                                for next_child in children[i + 1 :]:
+                                    next_classes = (
+                                        next_child.attributes.get("class") or ""
+                                    )
+                                    if "text-bold" not in next_classes:
+                                        value = self._clean_text(next_child.text())
+                                        if value and value != node_text:
+                                            return value
+                                break
+            return ""
+
+        def extract_label_value_global(label_text: str) -> str:
+            """Extract value from label anywhere in the page."""
+            for node in tree.css(".text-bold"):
+                node_text = self._clean_text(node.text())
+                if label_text.lower() in node_text.lower():
+                    parent = node.parent
+                    if parent:
+                        children = parent.css("div")
+                        for i, child in enumerate(children):
+                            if child == node:
+                                for next_child in children[i + 1 :]:
+                                    next_classes = (
+                                        next_child.attributes.get("class") or ""
+                                    )
+                                    if "text-bold" not in next_classes:
+                                        value = self._clean_text(next_child.text())
+                                        if value and value != node_text:
+                                            return value
+                                break
+            return ""
+
+        # Parse expediente (common for all events)
+        nro_expediente = extract_label_value_global("N° Expediente")
+        distrito_judicial = extract_label_value_global("Distrito judicial")
+        especialidad = extract_label_value_global("Especialidad")
+        instancia = extract_label_value_global("Instancia")
+        organo_jurisdiccional = extract_label_value_global("Órgano Jurisdiccional")
+
+        # Parse all events from the datagrid
+        eventos = []
+        datagrid = tree.css_first('[id*="dgListaConvocatoria_content"]')
+        if datagrid:
+            # Find all event cards (card gris class)
+            event_cards = datagrid.css(".card.gris")
+            for card in event_cards:
+                nro_convocatoria = extract_label_value_from_card(
+                    card, "N° Convocatoria"
+                )
+                fecha_registro_str = extract_label_value_from_card(
+                    card, "Fecha de registro"
+                )
+                procesado_por = extract_label_value_from_card(card, "Procesado por")
+                reanudado = extract_label_value_from_card(card, "¿Reanudado?")
+                fase_convocatoria = extract_label_value_from_card(
+                    card, "Fase convocatoria"
+                )
+                estado_convocatoria = extract_label_value_from_card(
+                    card, "Estado convocatoria"
+                )
+                fecha_desierto_str = extract_label_value_from_card(
+                    card, "Fecha de desierto"
+                )
+
+                fecha_registro = self._parse_date(fecha_registro_str) or date.today()
+                fecha_desierto = self._parse_date(fecha_desierto_str)
+
+                if nro_convocatoria:  # Only add if we found a convocatoria
+                    eventos.append(
+                        SeguimientoEvento(
+                            nro_convocatoria=nro_convocatoria,
+                            fecha_registro=fecha_registro,
+                            procesado_por=procesado_por,
+                            reanudado=reanudado,
+                            fase_convocatoria=fase_convocatoria,
+                            estado_convocatoria=estado_convocatoria,
+                            fecha_desierto=fecha_desierto,
+                        )
+                    )
+
+        return Seguimiento(
+            expediente=Expediente(
+                nro_expediente=nro_expediente,
+                distrito_judicial=distrito_judicial,
+                especialidad=especialidad,
+                instancia=instancia,
+                organo_jurisdiccional=organo_jurisdiccional,
+            ),
+            eventos=eventos,
         )

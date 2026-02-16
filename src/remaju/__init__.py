@@ -11,7 +11,7 @@ from .models import (
     InmueblesTab,
     CronogramaTab,
     Expediente,
-    SeguimientoData,
+    SeguimientoEvento,
 )
 from .parser import RemajuParser
 
@@ -26,6 +26,6 @@ __all__ = [
     "InmueblesTab",
     "CronogramaTab",
     "Expediente",
-    "SeguimientoData",
+    "SeguimientoEvento",
     "RemajuParser",
 ]

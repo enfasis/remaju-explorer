@@ -97,8 +97,8 @@ class Expediente(BaseModel):
     organo_jurisdiccional: str
 
 
-class SeguimientoData(BaseModel):
-    """Seguimiento data model."""
+class SeguimientoEvento(BaseModel):
+    """Seguimiento event model (represents one convocatoria)."""
 
     nro_convocatoria: str
     fecha_registro: date
@@ -106,14 +106,14 @@ class SeguimientoData(BaseModel):
     reanudado: str
     fase_convocatoria: str
     estado_convocatoria: str
+    fecha_desierto: Optional[date] = None
 
 
 class Seguimiento(BaseModel):
     """Complete seguimiento model."""
 
-    url: str
     expediente: Expediente
-    seguimiento: SeguimientoData
+    eventos: List[SeguimientoEvento]
 
 
 class RemateListItem(BaseModel):

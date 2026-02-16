@@ -25,6 +25,7 @@ from src.remaju.models import (
     RemateDetail,
     InmueblesTab,
     CronogramaTab,
+    Seguimiento,
 )
 from src.remaju.geocoding import GeocodingClient
 from src.remaju.exchange import ExchangeRateClient, parse_money_with_currency
@@ -43,6 +44,7 @@ class RemajuSiteClient:
     BASE_URL = "https://remaju.pj.gob.pe"
     LIST_URL = f"{BASE_URL}/remaju/pages/publico/remateExterno.xhtml"
     DETAIL_URL = f"{BASE_URL}/remaju/pages/publico/mostrarDetalleRemate.xhtml"
+    SEGUIMIENTO_URL = f"{BASE_URL}/remaju/pages/publico/mostrarSeguimientoRemate.xhtml"
 
     def __init__(
         self, headless: bool = False, debug_logger: Optional[DebugLogger] = None
@@ -328,6 +330,122 @@ class RemajuSiteClient:
         raise InvalidDetailPageException(
             f"Invalid detail page for auction {auction_number}"
         )
+
+    def click_seguimiento_button(
+        self, seguimiento_id: str, auction_number: Optional[str] = None
+    ) -> Tuple[str, int]:
+        """Click the seguimiento button and get seguimiento page HTML.
+
+        Returns:
+            Tuple of (html, request_number)
+        """
+        time.sleep(0.5)
+
+        payload = {
+            "javax.faces.partial.ajax": "true",
+            "javax.faces.source": seguimiento_id,
+            "javax.faces.partial.execute": "@all",
+            seguimiento_id: seguimiento_id,
+            "formBuscarRemateExterno": "formBuscarRemateExterno",
+            "formBuscarRemateExterno:j_idt73:filtroRemate": "",
+            "formBuscarRemateExterno:j_idt73:filtroNroExpediente": "",
+            "formBuscarRemateExterno:j_idt73:precioBaseDesde_input": "",
+            "formBuscarRemateExterno:j_idt73:precioBaseDesde_hinput": "",
+            "formBuscarRemateExterno:j_idt73:precioBaseHasta_input": "",
+            "formBuscarRemateExterno:j_idt73:precioBaseHasta_hinput": "",
+            "formBuscarRemateExterno:j_idt73:filtroTipoInmueble_focus": "",
+            "formBuscarRemateExterno:j_idt73:filtroTipoInmueble_input": "",
+            "formBuscarRemateExterno:j_idt73:filtroDepartamento_focus": "",
+            "formBuscarRemateExterno:j_idt73:filtroDepartamento_input": "",
+            "formBuscarRemateExterno:j_idt73:filtroProvincia_focus": "",
+            "formBuscarRemateExterno:j_idt73:filtroProvincia_input": "",
+            "formBuscarRemateExterno:j_idt73:filtroDistrito_focus": "",
+            "formBuscarRemateExterno:j_idt73:filtroDistrito_input": "",
+            "formBuscarRemateExterno:j_idt73:filtroFases_focus": "",
+            "formBuscarRemateExterno:j_idt73:filtroFases_input": "1",
+            "formBuscarRemateExterno:j_idt73_active": "0",
+            "formBuscarRemateExterno:captcha": "",
+            "formBuscarRemateExterno:listaRemate_rppDD": "4",
+            "javax.faces.ViewState": self.view_state,
+        }
+
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Faces-Request": "partial/ajax",
+            "X-Requested-With": "XMLHttpRequest",
+            "Referer": self.LIST_URL,
+        }
+
+        response, request_num = self._make_request(
+            "POST",
+            self.LIST_URL,
+            headers=headers,
+            data=payload,
+            auction_number=auction_number,
+            request_type="seguimiento_click",
+        )
+
+        response_text = response.text
+
+        # Check for redirect in XML response
+        if "<redirect" in response_text:
+            redirect_match = re.search(r'<redirect[^>]*url="([^"]+)"', response_text)
+            if redirect_match:
+                redirect_path = redirect_match.group(1)
+                redirect_url = (
+                    f"{self.BASE_URL}{redirect_path}"
+                    if redirect_path.startswith("/")
+                    else redirect_path
+                )
+                # Follow redirect to get seguimiento page
+                seg_response, _ = self._make_request(
+                    "GET",
+                    redirect_url,
+                    headers={"Referer": self.LIST_URL},
+                    auction_number=auction_number,
+                    request_type="seguimiento_page",
+                )
+                html = seg_response.text
+                if "formSeguimiento" in html:
+                    self.view_state = self._extract_view_state(html)
+                return html, request_num
+
+        # If no redirect, return the response text
+        return response_text, request_num
+
+    def close_seguimiento_page(self, auction_number: Optional[str] = None) -> int:
+        """Close/clean up seguimiento page by clicking return button.
+
+        Returns:
+            Request number
+        """
+        time.sleep(0.5)
+
+        payload = {
+            "javax.faces.partial.ajax": "true",
+            "javax.faces.source": "formSeguimientoRemate:j_idt18",
+            "javax.faces.partial.execute": "@all",
+            "formSeguimientoRemate:j_idt18": "formSeguimientoRemate:j_idt18",
+            "formSeguimientoRemate": "formSeguimientoRemate",
+            "javax.faces.ViewState": self.view_state,
+        }
+
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Faces-Request": "partial/ajax",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+
+        response, request_num = self._make_request(
+            "POST",
+            self.SEGUIMIENTO_URL,
+            headers=headers,
+            data=payload,
+            auction_number=auction_number,
+            request_type="seguimiento_close",
+        )
+
+        return request_num
 
     def fetch_detail_tab(
         self, tab_name: str, auction_number: Optional[str] = None
@@ -662,6 +780,60 @@ class RemajuDataService:
 
         return detail
 
+    def download_seguimiento(
+        self, remate: RemateListItem, card_info: Optional[dict]
+    ) -> Optional["Seguimiento"]:
+        """Download seguimiento data for a remate."""
+        from src.remaju.models import Seguimiento
+
+        log(f"Downloading seguimiento for remate {remate.numero_remate}...")
+
+        if not card_info or not card_info.get("seguimiento_id"):
+            log(f"⚠ No seguimiento button found for remate {remate.numero_remate}")
+            return None
+
+        auction_num = remate.numero_remate
+        debug = get_debug_logger()
+
+        try:
+            # Click seguimiento button and get HTML directly
+            seguimiento_html, seguimiento_req_num = (
+                self.client.click_seguimiento_button(
+                    card_info["seguimiento_id"], auction_number=auction_num
+                )
+            )
+
+            if "formSeguimiento" not in seguimiento_html:
+                log(f"  ⚠ Invalid seguimiento page for remate {auction_num}")
+                return None
+
+            seguimiento = self.parser.parse_seguimiento_html(
+                seguimiento_html, remate.numero_remate
+            )
+
+            if debug and debug.enabled:
+                debug.log_parsed_object(
+                    request_num=seguimiento_req_num,
+                    parsed_object=seguimiento,
+                    auction_number=auction_num,
+                    request_type="seguimiento_page",
+                    object_type="seguimiento",
+                )
+
+            log(f"  ✓ Downloaded seguimiento for remate {auction_num}")
+
+            # Close seguimiento page to reset session
+            self.client.close_seguimiento_page(auction_number=auction_num)
+
+            return seguimiento
+
+        except Exception as e:
+            log(f"  ⚠ Error downloading seguimiento for {auction_num}: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return None
+
     def _log_detail_summary(self, detail: RemateDetail) -> None:
         """Log summary of extracted money, location and phase data."""
         remate_tab = detail.remate_tab
@@ -861,11 +1033,12 @@ class RemajuDataService:
                 try:
                     card_info = cards_by_remate.get(remate.numero_remate)
                     detail = self.download_detail(remate, card_info)
+                    seguimiento = self.download_seguimiento(remate, card_info)
                     auction = Auction(
                         numero_remate=remate.numero_remate,
                         list_data=remate,
                         detail=detail,
-                        seguimiento=None,
+                        seguimiento=seguimiento,
                     )
                     all_auctions.append(auction)
                     print(f"  ✓ Successfully processed {remate.numero_remate}")
