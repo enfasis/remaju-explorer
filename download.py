@@ -990,7 +990,7 @@ class RemajuDataService:
             log(f"  ✓ Exchange rate applied: 1 PEN = {rate:.4f} USD")
 
     def download_auctions(
-        self, max_pages: int = 1, rows_per_page: int = 4
+        self, max_pages: Optional[int] = None, rows_per_page: int = 4
     ) -> List[Auction]:
         """Download complete auction data page by page.
 
@@ -998,6 +998,10 @@ class RemajuDataService:
         - Retrieve page 1, extract all details
         - Retrieve page 2, extract all details
         - etc.
+
+        Args:
+            max_pages: Maximum number of pages to download. If None, download all pages.
+            rows_per_page: Number of rows per page.
         """
         log("Starting auction download...\n")
 
@@ -1005,10 +1009,19 @@ class RemajuDataService:
         self.client.get_list_page()
 
         all_auctions = []
+        page_num = 0
 
-        for page_num in range(max_pages):
+        while True:
+            # Check if we've reached the max_pages limit
+            if max_pages is not None and page_num >= max_pages:
+                log(f"Reached max_pages limit ({max_pages}), stopping")
+                break
+
             log("=" * 50)
-            log(f"Processing Page {page_num + 1}/{max_pages}")
+            if max_pages:
+                log(f"Processing Page {page_num + 1}/{max_pages}")
+            else:
+                log(f"Processing Page {page_num + 1}")
             log("=" * 50)
 
             # Download current page
@@ -1059,9 +1072,10 @@ class RemajuDataService:
                     auction_number=remates[-1].numero_remate, follow_redirect=True
                 )
 
+            page_num += 1
+
             # Small delay between pages
-            if page_num < max_pages - 1:
-                time.sleep(2)
+            time.sleep(2)
 
         log("=" * 50)
         log(f"Download complete. Total auctions: {len(all_auctions)}")
@@ -1129,8 +1143,8 @@ def main():
         "--pages",
         "-p",
         type=int,
-        default=1,
-        help="Number of pages to download (default: 1)",
+        default=None,
+        help="Number of pages to download (default: download all pages)",
     )
     parser.add_argument("--no-geocoding", action="store_true", help="Disable geocoding")
     parser.add_argument(
