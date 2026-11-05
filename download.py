@@ -1,6 +1,7 @@
 """Refactored REMAJU data downloader with parsing and JSON export."""
 
 import json
+import random
 import re
 import time
 from datetime import date, datetime
@@ -16,6 +17,11 @@ def log(message: str) -> None:
     """Print message with timestamp."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {message}")
+
+
+def custom_wait() -> None:
+    """Wait for a random duration between 1.3 and 1.8 seconds."""
+    time.sleep(1.3 + random.uniform(0, 0.5))
 
 
 from src.remaju.parser import RemajuParser
@@ -63,6 +69,8 @@ class RemajuSiteClient:
         self.debug_logger = debug_logger
         self.detail_regresar_id = None
         self.detail_active_index = "0"
+        self.seguimiento_regresar_id = None
+        self.seguimiento_active_index = "4"
 
     def _make_request(
         self,
@@ -170,7 +178,7 @@ class RemajuSiteClient:
         if not self.view_state:
             raise ValueError("No ViewState available. Call get_list_page() first.")
 
-        time.sleep(0.5)
+        custom_wait()
 
         payload = {
             "javax.faces.partial.ajax": "true",
@@ -235,7 +243,7 @@ class RemajuSiteClient:
         Returns:
             Request number
         """
-        time.sleep(0.5)
+        custom_wait()
 
         payload = {
             "javax.faces.partial.ajax": "true",
@@ -279,10 +287,17 @@ class RemajuSiteClient:
         expected_labels = ["Expediente", "Distrito Judicial", "Tasaci", "Precio Base"]
         return any(label in html for label in expected_labels)
 
-    def _extract_regresar_button_id(self, html: str) -> Optional[str]:
+    def _extract_regresar_button_id(
+        self, html: str, is_seguimiento: bool = False
+    ) -> Optional[str]:
         """Extract the Regresar button ID from detail page HTML."""
         # Find all buttons and look for one with "Regresar" text
-        pattern = r'<button[^>]*id="(formDetalleRemate:j_idt\d+)"[^>]*>(.*?)</button>'
+        if is_seguimiento:
+            pattern = r'<button[^>]*id="(formSeguimiento:j_idt\d+)"[^>]*>(.*?)</button>'
+        else:
+            pattern = (
+                r'<button[^>]*id="(formDetalleRemate:j_idt\d+)"[^>]*>(.*?)</button>'
+            )
         matches = re.findall(pattern, html, re.IGNORECASE | re.DOTALL)
 
         for btn_id, content in matches:
@@ -290,6 +305,51 @@ class RemajuSiteClient:
                 return btn_id
 
         return None
+
+    def _is_valid_seguimiento_page(self, html: str) -> bool:
+        """Check if HTML contains expected seguimiento page content."""
+        if "BIENVENIDOS A REM@JU" in html or "formInicio" in html:
+            return False
+        expected_labels = ["Detalle de seguimiento"]
+        return any(label in html for label in expected_labels)
+
+    def get_seguimiento_page(
+        self, auction_number: Optional[str] = None
+    ) -> Tuple[str, int]:
+        """Get the seguimiento page after clicking the seguimiento button.
+
+        Validates that the response contains expected seguimiento page content.
+        Raises InvalidDetailPageException if we get the homepage instead.
+
+        Returns:
+            Tuple of (html, request_number)
+
+        Raises:
+            InvalidDetailPageException: If we can't get a valid seguimiento page
+        """
+        headers = {
+            "Referer": self.LIST_URL,
+        }
+        response, request_num = self._make_request(
+            "GET",
+            self.SEGUIMIENTO_URL,
+            headers=headers,
+            auction_number=auction_number,
+            request_type="seguimiento_page",
+        )
+        html = response.text
+
+        if self._is_valid_seguimiento_page(html):
+            self.view_state = self._extract_view_state(html)
+            regresar_id = self._extract_regresar_button_id(html, is_seguimiento=True)
+            if regresar_id:
+                self.seguimiento_regresar_id = regresar_id
+            self.seguimiento_active_index = "4"
+            return html, request_num
+
+        raise InvalidDetailPageException(
+            f"Invalid seguimiento page for auction {auction_number}"
+        )
 
     def get_detail_page(self, auction_number: Optional[str] = None) -> Tuple[str, int]:
         """Get the detail page after clicking the detail button.
@@ -333,13 +393,13 @@ class RemajuSiteClient:
 
     def click_seguimiento_button(
         self, seguimiento_id: str, auction_number: Optional[str] = None
-    ) -> Tuple[str, int]:
+    ) -> int:
         """Click the seguimiento button and get seguimiento page HTML.
 
         Returns:
             Tuple of (html, request_number)
         """
-        time.sleep(0.5)
+        custom_wait()
 
         payload = {
             "javax.faces.partial.ajax": "true",
@@ -347,25 +407,6 @@ class RemajuSiteClient:
             "javax.faces.partial.execute": "@all",
             seguimiento_id: seguimiento_id,
             "formBuscarRemateExterno": "formBuscarRemateExterno",
-            "formBuscarRemateExterno:j_idt73:filtroRemate": "",
-            "formBuscarRemateExterno:j_idt73:filtroNroExpediente": "",
-            "formBuscarRemateExterno:j_idt73:precioBaseDesde_input": "",
-            "formBuscarRemateExterno:j_idt73:precioBaseDesde_hinput": "",
-            "formBuscarRemateExterno:j_idt73:precioBaseHasta_input": "",
-            "formBuscarRemateExterno:j_idt73:precioBaseHasta_hinput": "",
-            "formBuscarRemateExterno:j_idt73:filtroTipoInmueble_focus": "",
-            "formBuscarRemateExterno:j_idt73:filtroTipoInmueble_input": "",
-            "formBuscarRemateExterno:j_idt73:filtroDepartamento_focus": "",
-            "formBuscarRemateExterno:j_idt73:filtroDepartamento_input": "",
-            "formBuscarRemateExterno:j_idt73:filtroProvincia_focus": "",
-            "formBuscarRemateExterno:j_idt73:filtroProvincia_input": "",
-            "formBuscarRemateExterno:j_idt73:filtroDistrito_focus": "",
-            "formBuscarRemateExterno:j_idt73:filtroDistrito_input": "",
-            "formBuscarRemateExterno:j_idt73:filtroFases_focus": "",
-            "formBuscarRemateExterno:j_idt73:filtroFases_input": "1",
-            "formBuscarRemateExterno:j_idt73_active": "0",
-            "formBuscarRemateExterno:captcha": "",
-            "formBuscarRemateExterno:listaRemate_rppDD": "4",
             "javax.faces.ViewState": self.view_state,
         }
 
@@ -385,48 +426,32 @@ class RemajuSiteClient:
             request_type="seguimiento_click",
         )
 
-        response_text = response.text
+        new_view_state = self._extract_view_state_from_xml(response.text)
+        if new_view_state:
+            self.view_state = new_view_state
 
-        # Check for redirect in XML response
-        if "<redirect" in response_text:
-            redirect_match = re.search(r'<redirect[^>]*url="([^"]+)"', response_text)
-            if redirect_match:
-                redirect_path = redirect_match.group(1)
-                redirect_url = (
-                    f"{self.BASE_URL}{redirect_path}"
-                    if redirect_path.startswith("/")
-                    else redirect_path
-                )
-                # Follow redirect to get seguimiento page
-                seg_response, _ = self._make_request(
-                    "GET",
-                    redirect_url,
-                    headers={"Referer": self.LIST_URL},
-                    auction_number=auction_number,
-                    request_type="seguimiento_page",
-                )
-                html = seg_response.text
-                if "formSeguimiento" in html:
-                    self.view_state = self._extract_view_state(html)
-                return html, request_num
+        return request_num
 
-        # If no redirect, return the response text
-        return response_text, request_num
-
-    def close_seguimiento_page(self, auction_number: Optional[str] = None) -> int:
+    def close_seguimiento_page(
+        self, auction_number: Optional[str] = None, follow_redirect: bool = True
+    ) -> int:
         """Close/clean up seguimiento page by clicking return button.
 
         Returns:
             Request number
         """
-        time.sleep(0.5)
+        custom_wait()
+
+        regresar_id = self.seguimiento_regresar_id
+        active_index = self.seguimiento_active_index or "4"
 
         payload = {
             "javax.faces.partial.ajax": "true",
-            "javax.faces.source": "formSeguimientoRemate:j_idt18",
+            "javax.faces.source": regresar_id,
             "javax.faces.partial.execute": "@all",
-            "formSeguimientoRemate:j_idt18": "formSeguimientoRemate:j_idt18",
-            "formSeguimientoRemate": "formSeguimientoRemate",
+            regresar_id: regresar_id,
+            "formSeguimiento": "formSeguimiento",
+            "formSeguimiento:dgListaConvocatoria_rppDD": active_index,
             "javax.faces.ViewState": self.view_state,
         }
 
@@ -444,6 +469,26 @@ class RemajuSiteClient:
             auction_number=auction_number,
             request_type="seguimiento_close",
         )
+
+        response_text = response.text
+
+        # Only follow redirect if explicitly requested (e.g., when done with page)
+        if follow_redirect and "<redirect" in response_text:
+            redirect_match = re.search(r'<redirect[^>]*url="([^"]+)"', response_text)
+            if redirect_match:
+                redirect_path = redirect_match.group(1)
+                redirect_url = (
+                    f"{self.BASE_URL}{redirect_path}"
+                    if redirect_path.startswith("/")
+                    else redirect_path
+                )
+                list_response, _ = self._make_request(
+                    "GET",
+                    redirect_url,
+                    auction_number=auction_number,
+                    request_type="list_redirect",
+                )
+                self.view_state = self._extract_view_state(list_response.text)
 
         return request_num
 
@@ -474,7 +519,7 @@ class RemajuSiteClient:
         if tab_name not in tab_configs:
             raise ValueError(f"Unknown tab: {tab_name}")
 
-        time.sleep(0.5)
+        custom_wait()
         config = tab_configs[tab_name]
 
         payload = {
@@ -534,10 +579,10 @@ class RemajuSiteClient:
         Returns:
             Request number
         """
-        time.sleep(0.5)
+        custom_wait()
 
         # Use stored Regresar button ID or fallback to default
-        regresar_id = self.detail_regresar_id or "formDetalleRemate:j_idt163"
+        regresar_id = self.detail_regresar_id
         active_index = self.detail_active_index or "0"
 
         payload = {
@@ -784,7 +829,6 @@ class RemajuDataService:
         self, remate: RemateListItem, card_info: Optional[dict]
     ) -> Optional["Seguimiento"]:
         """Download seguimiento data for a remate."""
-        from src.remaju.models import Seguimiento
 
         log(f"Downloading seguimiento for remate {remate.numero_remate}...")
 
@@ -795,44 +839,36 @@ class RemajuDataService:
         auction_num = remate.numero_remate
         debug = get_debug_logger()
 
+        self.client.click_seguimiento_button(
+            card_info["seguimiento_id"], auction_number=auction_num
+        )
+
         try:
-            # Click seguimiento button and get HTML directly
-            seguimiento_html, seguimiento_req_num = (
-                self.client.click_seguimiento_button(
-                    card_info["seguimiento_id"], auction_number=auction_num
-                )
+            seguimiento_html, seguimiento_req_num = self.client.get_seguimiento_page(
+                auction_number=auction_num
             )
-
-            if "formSeguimiento" not in seguimiento_html:
-                log(f"  ⚠ Invalid seguimiento page for remate {auction_num}")
-                return None
-
-            seguimiento = self.parser.parse_seguimiento_html(
-                seguimiento_html, remate.numero_remate
-            )
-
-            if debug and debug.enabled:
-                debug.log_parsed_object(
-                    request_num=seguimiento_req_num,
-                    parsed_object=seguimiento,
-                    auction_number=auction_num,
-                    request_type="seguimiento_page",
-                    object_type="seguimiento",
-                )
-
-            log(f"  ✓ Downloaded seguimiento for remate {auction_num}")
-
-            # Close seguimiento page to reset session
-            self.client.close_seguimiento_page(auction_number=auction_num)
-
-            return seguimiento
-
-        except Exception as e:
-            log(f"  ⚠ Error downloading seguimiento for {auction_num}: {e}")
-            import traceback
-
-            traceback.print_exc()
+        except InvalidDetailPageException as e:
+            log(f"  ✗ Skipping auction {auction_num}: {e}")
+            self.client._reset_session_to_list(auction_number=auction_num)
             return None
+
+        base_seguimiento = self.parser.parse_seguimiento_html(
+            seguimiento_html, remate.numero_remate
+        )
+
+        if debug and debug.enabled:
+            debug.log_parsed_object(
+                request_num=seguimiento_req_num,
+                parsed_object=base_seguimiento,
+                auction_number=auction_num,
+                request_type="seguimiento_page",
+                object_type="seguimiento",
+            )
+
+        self.client.close_seguimiento_page(
+            auction_number=auction_num, follow_redirect=False
+        )
+        return base_seguimiento
 
     def _log_detail_summary(self, detail: RemateDetail) -> None:
         """Log summary of extracted money, location and phase data."""
@@ -1075,7 +1111,7 @@ class RemajuDataService:
             page_num += 1
 
             # Small delay between pages
-            time.sleep(2)
+            custom_wait()
 
         log("=" * 50)
         log(f"Download complete. Total auctions: {len(all_auctions)}")

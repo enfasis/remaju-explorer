@@ -32,7 +32,7 @@ def get_current_fase(fases):
         fecha_fin = datetime.fromisoformat(
             fase["fecha_fin"].replace("Z", "").replace("+00:00", "")
         )
-        if fecha_inicio <= now <= fecha_fin:
+        if fecha_inicio.date() <= now.date() <= fecha_fin.date():
             return fase["fase"]
     return "Finalizado"
 
