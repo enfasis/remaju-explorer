@@ -18,3 +18,9 @@ make sample     # contact REMAJU for a non-publishable sample
 ## Deployment
 
 Pushes to `main` build the explorer and deploy it to Cloudflare Pages at <https://remaju.mejora.me> (`.github/workflows/deploy.yml`). The Pages project, domain, DNS record and the deploy token are managed with Terraform in [enfasis/enfatizados](https://github.com/enfasis/enfatizados) (`remaju.tf`). GitHub Actions uses the repository variables `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_PAGES_PROJECT` and the `production` environment secret `CLOUDFLARE_API_TOKEN`.
+
+## Data refresh
+
+The **Refresh data** workflow (`.github/workflows/refresh.yml`, manual) collects from REMAJU, geocodes and converts prices, and publishes a release to the R2 bucket served at <https://data.remaju.mejora.me/>. It restores the previous state and the geocoding/exchange caches from the private R2 bucket first, uploads `data/manifest.json` last, and keeps raw run traces in the private bucket. `max_pages` (default 5) limits the walk and publishes a partial release; leave it empty for a full run.
+
+The live site reads `data/manifest.json` from R2 when the `DATA_URL` repository variable is set; otherwise, and always in local development, it uses the bundled sample in `src/web/public/demo/`. The workflow needs the variables `R2_ENDPOINT`, `R2_DATA_BUCKET`, `R2_PRIVATE_BUCKET`, `R2_ACCESS_KEY_ID` and the `production` secrets `R2_SECRET_ACCESS_KEY` and `GEOCODING_API_KEY`.

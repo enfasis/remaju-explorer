@@ -73,7 +73,7 @@ export default function Home() {
   const type = (key: keyof Filters, value: string) => void setFilters({ [key]: value || null }, { history: 'replace' })
   const clear = () => void setFilters(Object.fromEntries(Object.keys(parsers).map(k => [k, null])), { history: 'push' })
   const select = (label: string, key: keyof Filters, values: string[]) => <FilterSelect label={label} value={filters[key]} options={choices(values)} onChange={value => update(key, value)} />
-  const resultsLabel = `${results.length} resultados${manifest?.demo ? ' · Muestra parcial del 07/11/2026' : ''}`
+  const resultsLabel = `${results.length} resultados${manifest?.demo ? ' · Muestra parcial del 07/11/2026' : manifest?.scope === 'partial' ? ' · Muestra parcial' : ''}`
   return <>
     <h1 className="sr-only">Remates judiciales del Perú</h1>
     <section className="filters glass" aria-label="Filtros de remates">

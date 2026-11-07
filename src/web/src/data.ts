@@ -85,17 +85,28 @@ export function displayMoney(money: Summary['precio_base'], currency: string, ra
   return `${money?.currency !== currency ? '≈ ' : ''}${currency === 'PEN' ? 'S/' : 'US$'} ${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction.padEnd(2, '0').slice(0, 2)}`
 }
 
-export type Manifest = { schema_version: number; generated_at: string; dataset_version: string; availability: { path: string }; archive?: { path: string }; demo?: boolean }
+export type Manifest = { schema_version: number; generated_at: string; dataset_version: string; scope?: string; availability: { path: string }; archive?: { path: string }; demo?: boolean }
 export type Snapshot = { auctions: Summary[] }
 
-export const dataPath = import.meta.env.DEV || import.meta.env.VITE_DEMO === 'true' ? 'demo/manifest.json' : 'data/manifest.json'
+const demo = import.meta.env.DEV || import.meta.env.VITE_DEMO === 'true'
+
+export const dataPath = demo ? 'demo/manifest.json' : 'data/manifest.json'
 
 export function siteUrl(path: string): string {
   return `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
 }
 
+export function dataUrl(path: string): string {
+  const base = demo ? import.meta.env.BASE_URL : import.meta.env.VITE_DATA_URL || import.meta.env.BASE_URL
+  return `${base.replace(/\/?$/, '/')}${path.replace(/^\/+/, '')}`
+}
+
+export function partialData(manifest: Manifest): boolean {
+  return Boolean(manifest.demo) || manifest.scope === 'partial'
+}
+
 export async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(siteUrl(path))
+  const response = await fetch(dataUrl(path))
   if (!response.ok || !response.headers.get('content-type')?.includes('json')) throw new Error('No se pudieron cargar los datos.')
   return response.json() as Promise<T>
 }

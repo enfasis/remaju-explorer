@@ -27,7 +27,8 @@ jobs:
       - run: npm run build
         working-directory: src/web
         env:
-          VITE_DEMO: 'true'
+          VITE_DEMO: ${{ vars.DATA_URL == '' }}
+          VITE_DATA_URL: ${{ vars.DATA_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: explorer-site

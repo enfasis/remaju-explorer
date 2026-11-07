@@ -105,6 +105,14 @@ def test_live_run_stops_at_empty_page(tmp_path, source):
     assert report["scope"] == "all-phases"
 
 
+def test_live_run_with_page_limit_is_partial(tmp_path, source):
+    report = collect(tmp_path, "live", source, lambda: None, max_pages=1)
+    assert report["count"] == 4
+    assert report["max_pages"] == 1
+    assert report["scope"] == "partial"
+    assert report["status"] == "partial"
+
+
 def test_failed_detail_is_recorded_and_collection_continues(tmp_path, list_html, list_xml, detail_html, inmuebles_xml, cronograma_xml):
     broken = Source(list_html, list_xml, detail_html, inmuebles_xml, cronograma_xml, {"formBuscarRemateExterno:listaRemate:1:j_idt169"})
     report = collect(tmp_path, "live", broken, lambda: None)

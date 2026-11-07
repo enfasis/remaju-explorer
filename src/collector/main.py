@@ -13,9 +13,6 @@ from utils.exchange import ExchangeRateClient
 from utils.geocode import GeocodingClient
 from utils.publication import publish_run, validate_run
 
-PUBLICATION_DISABLED = "Production publication is disabled; only synthetic fixture releases are supported"
-
-
 class CommandFailed(Exception):
     def __init__(self, result: Any, code: int):
         super().__init__(code)
@@ -37,11 +34,6 @@ def load_auctions(path: Path) -> list[dict[str, Any]]:
 def new_output(output: Path, source: Path | None = None) -> None:
     if output.exists() or (source is not None and output.resolve() == source.resolve()):
         raise ValueError("Output must be a new file distinct from the input")
-
-
-def publication_allowed(fixture_only: bool) -> None:
-    if not fixture_only:
-        raise ValueError(PUBLICATION_DISABLED)
 
 
 class Action(Command):
@@ -66,10 +58,11 @@ class Collect(Action):
 
     mode: Literal["sample", "live"] = arg("sample", help="sample walks one listing page; live walks every page")
     output: Path = arg(Path("var/private/runs"), help="Directory for run caches and traces")
+    max_pages: int | None = arg(None, help="Stop a live run after this many listing pages; the run stays partial")
 
     @override
     def execute(self) -> Any:
-        result = collect(self.output, self.mode)
+        result = collect(self.output, self.mode, max_pages=self.max_pages)
         if result["status"] == "failed":
             raise CommandFailed(result, 4)
         return result
@@ -82,18 +75,17 @@ class Process(Action):
     geocode: bool = arg(False, help="Geocode properties with the paid Google API")
     exchange: bool = arg(False, help="Convert prices with the external exchange-rate API")
     target: Path | None = arg(None, help="Publish the consolidated run into this site root")
-    fixture_only: bool = arg(False, help="Acknowledge that publication is limited to synthetic fixtures")
+    allow_partial: bool = arg(False, help="Publish a partial live run, such as one limited with --max-pages")
 
     @override
     def execute(self) -> Any:
-        if self.target is not None:
-            publication_allowed(self.fixture_only)
         settings = Settings()
         processing = Processing(
             self.run_dir,
             GeocodingClient(settings.geocoding_key(), settings.geocoding_cache) if self.geocode else None,
             ExchangeRateClient(settings.exchange_rate_cache) if self.exchange else None,
             self.target,
+            allow_partial=self.allow_partial,
         )
         result = processing.process()
         if self.target is not None:
@@ -106,12 +98,11 @@ class Publish(Action):
 
     run_file: Path = arg(help="Consolidated run document")
     target: Path = arg(help="Site root")
-    fixture_only: bool = arg(False, help="Acknowledge that publication is limited to synthetic fixtures")
+    allow_partial: bool = arg(False, help="Publish a partial live run, such as one limited with --max-pages")
 
     @override
     def execute(self) -> Any:
-        publication_allowed(self.fixture_only)
-        return publish_run(read_json(self.run_file), self.target)
+        return publish_run(read_json(self.run_file), self.target, self.allow_partial)
 
 
 class ValidateRun(Action):

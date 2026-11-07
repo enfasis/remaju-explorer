@@ -33,13 +33,13 @@ def test_invalid_mode_is_rejected_before_collecting(capsys, tmp_path):
     assert not any(tmp_path.iterdir())
 
 
-def test_publication_requires_fixture_acknowledgement(capsys, tmp_path):
+def test_partial_publication_requires_acknowledgement(capsys, tmp_path):
     run = tmp_path / "run.json"
-    write_json(run, {"auctions": []})
+    write_json(run, {"run_id": "r1", "mode": "live", "status": "partial", "scope": "partial", "auctions": []})
     code, _, err = invoke(capsys, "publish", "--run-file", str(run), "--target", str(tmp_path / "site"))
     assert code == 5
-    assert "Production publication is disabled" in json.loads(err)["error"]["message"]
-    assert not (tmp_path / "site").exists()
+    assert "Only complete all-phase live runs" in json.loads(err)["error"]["message"]
+    assert not (tmp_path / "site/data").exists()
 
 
 def test_process_consolidates_without_external_services(capsys, tmp_path):

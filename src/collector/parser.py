@@ -93,17 +93,21 @@ class Parser:
         }
 
 
-def collect(output: Path, mode: str, session: requests.Session | None = None, pause: Callable[[], None] = polite_pause) -> dict[str, Any]:
+def collect(output: Path, mode: str, session: requests.Session | None = None, pause: Callable[[], None] = polite_pause, max_pages: int | None = None) -> dict[str, Any]:
+    if max_pages is not None and max_pages < 1:
+        raise ValueError("max_pages must be at least 1")
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     trace = Trace(output / run_id)
     started = utc_now()
-    report: dict[str, Any] = {"run_id": run_id, "mode": mode, "scope": "all-phases" if mode == "live" else "sample", "status": "failed", "started_at": started, "observed_at": started}
+    limit = max_pages if mode == "live" else 1
+    scope = "sample" if mode != "live" else "partial" if max_pages is not None else "all-phases"
+    report: dict[str, Any] = {"run_id": run_id, "mode": mode, "scope": scope, "max_pages": limit, "status": "failed", "started_at": started, "observed_at": started}
     try:
         with session or requests.Session() as http:
-            parser = Parser(RemajuSite(trace, http, pause), trace.directory / "auctions.json", None if mode == "live" else 1)
+            parser = Parser(RemajuSite(trace, http, pause), trace.directory / "auctions.json", limit)
             parser.process()
             report.update(parser.report())
-            report["status"] = "complete" if mode == "live" and report["pages_complete"] and report["details_complete"] else "partial"
+            report["status"] = "complete" if scope == "all-phases" and report["pages_complete"] and report["details_complete"] else "partial"
     except (ValueError, OSError, requests.RequestException) as error:
         report["error"] = {"type": type(error).__name__, "message": str(error)}
     finally:

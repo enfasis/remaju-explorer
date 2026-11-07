@@ -29,6 +29,35 @@ def test_accepted_snapshot_and_repeated_run(tmp_path):
         publish_run(run(), tmp_path)
 
 
+def partial(run_id="p1"):
+    return {**run(run_id), "status": "partial", "scope": "partial", "advertised_total": 40, "pages_complete": False}
+
+
+def test_partial_run_requires_allow_partial(tmp_path):
+    with pytest.raises(ValueError, match="complete"):
+        publish_run(partial(), tmp_path)
+    manifest = publish_run(partial(), tmp_path, allow_partial=True)
+    assert manifest["scope"] == "partial"
+
+
+def test_complete_run_replaces_partial_baseline(tmp_path):
+    publish_run(partial(), tmp_path, allow_partial=True)
+    manifest = publish_run(run("r2"), tmp_path)
+    assert manifest["scope"] == "all-phases"
+    assert manifest["history"] == ["/data/releases/r2/events.jsonl.gz"]
+
+
+def test_release_detail_matches_site_shape(tmp_path):
+    source = run()
+    source["auctions"][0]["detail"]["inmuebles_tab"] = {"departamento": "LIMA", "inmuebles": [{"direccion": "Av. 1", "latitude": -12.1, "longitude": -77.0}]}
+    manifest = publish_run(source, tmp_path)
+    summary = read_json(tmp_path / manifest["availability"]["path"].lstrip("/"))["auctions"][0]
+    detail = read_json(tmp_path / summary["detail_path"].lstrip("/"))
+    assert summary["coordinates"] == [{"latitude": -12.1, "longitude": -77.0}]
+    assert detail["ubicacion"]["departamento"] == "LIMA"
+    assert detail["inmuebles"][0]["direccion"] == "Av. 1"
+
+
 def test_advertised_count_is_required():
     broken = run()
     broken["advertised_total"] = 2

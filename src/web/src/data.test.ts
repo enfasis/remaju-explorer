@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareDecimal, convertedAmount, currentPhase, orderAuctions, parseMoney, phaseState, place, siteUrl, sortAuctions, type Summary } from './data'
+import { compareDecimal, convertedAmount, currentPhase, dataUrl, orderAuctions, parseMoney, phaseState, place, siteUrl, sortAuctions, type Summary } from './data'
 
 describe('display conversion', () => {
   const rate = { penToUsd: '0.25', date: '2026-11-07', source: 'fixture' }
@@ -19,6 +19,7 @@ describe('display conversion', () => {
 describe('site paths', () => {
   it('resolves data and assets under the configured base', () => {
     expect(siteUrl('/demo/manifest.json')).toBe(`${import.meta.env.BASE_URL}demo/manifest.json`)
+    expect(dataUrl('/demo/manifest.json')).toBe(`${import.meta.env.BASE_URL}demo/manifest.json`)
   })
 })
 

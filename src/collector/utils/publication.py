@@ -12,27 +12,31 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from .archive import canonical_bytes, export_csv, identifier, read_json, reconcile, utc_now, write_events, write_json
-from .sample_export import current_status, schedule
+from .sample_export import current_status, public_detail, schedule
 
 
 PHASES = {"publicación e inscripcion", "publicación e inscripción", "validación de inscripción", "presentación de ofertas"}
 MAX_SUMMARY_SIZE = 1024 * 1024
 
 
-def validate_run(run: dict[str, Any], previous_count: int | None = None) -> None:
-    if run.get("mode") != "live" or run.get("status") != "complete" or run.get("scope") != "all-phases":
+def validate_run(run: dict[str, Any], previous_count: int | None = None, allow_partial: bool = False) -> None:
+    if allow_partial:
+        if run.get("mode") != "live" or run.get("status") not in {"complete", "partial"} or run.get("scope") not in {"all-phases", "partial"}:
+            raise ValueError("Only live runs may be published")
+    elif run.get("mode") != "live" or run.get("status") != "complete" or run.get("scope") != "all-phases":
         raise ValueError("Only complete all-phase live runs may be published")
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", str(run.get("run_id", ""))):
         raise ValueError("Invalid run identifier")
     auctions = run.get("auctions")
     if not isinstance(auctions, list) or not auctions:
         raise ValueError("Empty or missing auction list requires manual review")
-    if run.get("advertised_total") != len(auctions):
-        raise ValueError("Advertised total does not match observed records")
-    if run.get("pages_complete") is not True or run.get("details_complete") is not True:
-        raise ValueError("Incomplete pagination or details")
-    if previous_count and len(auctions) < previous_count * 0.7:
-        raise ValueError("Suspicious drop requires manual review")
+    if not allow_partial:
+        if run.get("advertised_total") != len(auctions):
+            raise ValueError("Advertised total does not match observed records")
+        if run.get("pages_complete") is not True or run.get("details_complete") is not True:
+            raise ValueError("Incomplete pagination or details")
+        if previous_count and len(auctions) < previous_count * 0.7:
+            raise ValueError("Suspicious drop requires manual review")
     seen = set()
     for auction in auctions:
         if not isinstance(auction, dict):
@@ -86,6 +90,8 @@ def summary(auction: dict[str, Any]) -> dict[str, Any]:
         "offer_date": offer_date, "offer_at": None,
         "precio_base": money(remate.get("precio_base") or listing.get("precio_base")),
         "cronograma": schedule(detail),
+        "coordinates": [{"latitude": item["latitude"], "longitude": item["longitude"]} for item in properties if item.get("latitude") is not None and item.get("longitude") is not None],
+        "thumbnail_path": None,
         "detail_path": f"auctions/{auction['numero_remate']}.json",
     }
 
@@ -112,7 +118,7 @@ def checksum(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def publish_run(run: dict[str, Any], root: Path) -> dict[str, Any]:
+def publish_run(run: dict[str, Any], root: Path, allow_partial: bool = False) -> dict[str, Any]:
     root.mkdir(parents=True, exist_ok=True)
     with exclusive_lock(root / ".lock"):
         manifest_path = root / "data/manifest.json"
@@ -122,8 +128,10 @@ def publish_run(run: dict[str, Any], root: Path) -> dict[str, Any]:
             raise ValueError("Previous state checksum mismatch")
         if old_state.get("last_run_id") == run.get("run_id"):
             raise ValueError("Run already accepted")
+        if old_state and old_state.get("scope") != run.get("scope"):
+            old_manifest, old_state = None, {}
         previous_count = sum(record["present"] for record in old_state.get("records", {}).values()) if old_state else None
-        validate_run(run, previous_count)
+        validate_run(run, previous_count, allow_partial)
         run_id = run["run_id"]
         release_relative = Path("data/releases") / run_id
         final = root / release_relative
@@ -138,7 +146,7 @@ def publish_run(run: dict[str, Any], root: Path) -> dict[str, Any]:
                     item = summary(auction)
                     item["detail_path"] = f"/{release_relative}/auctions/{auction['numero_remate']}.json"
                     available.append(item)
-                    write_json(temporary / "auctions" / f"{auction['numero_remate']}.json", auction)
+                    write_json(temporary / "auctions" / f"{auction['numero_remate']}.json", public_detail(auction))
             available.sort(key=lambda item: item["auction_id"])
             snapshot = {"schema_version": 1, "dataset_version": run_id, "auctions": available}
             if len(canonical_bytes(snapshot)) > MAX_SUMMARY_SIZE:

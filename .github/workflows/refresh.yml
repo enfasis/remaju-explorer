@@ -1,15 +1,73 @@
 name: Refresh data
 on:
   workflow_dispatch:
+    inputs:
+      max_pages:
+        description: Listing pages to collect (4 auctions each). Empty collects everything.
+        default: '5'
+        required: false
 permissions:
   contents: read
 concurrency:
   group: remaju-production
   cancel-in-progress: false
 jobs:
-  safety-gate:
+  refresh:
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 180
+    environment: production
+    env:
+      MAX_PAGES: ${{ inputs.max_pages }}
+      AWS_ACCESS_KEY_ID: ${{ vars.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      AWS_ENDPOINT_URL: ${{ vars.R2_ENDPOINT }}
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      DATA: s3://${{ vars.R2_DATA_BUCKET }}
+      PRIVATE: s3://${{ vars.R2_PRIVATE_BUCKET }}
+      GEOCODING_CACHE: ${{ github.workspace }}/var/cache/geocoding_cache.json
+      EXCHANGE_RATE_CACHE: ${{ github.workspace }}/var/cache/exchange_rate_cache.json
+      SITE: ${{ github.workspace }}/var/site
+      RUNS: ${{ github.workspace }}/var/runs
+    defaults:
+      run:
+        working-directory: src/collector
     steps:
-      - run: |
-          echo "The collector and durable baseline restore are not verified. No live request or publication was attempted."
-          exit 1
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv tool install awscli && uv tool dir --bin >> "$GITHUB_PATH"
+      - name: Restore caches and previous state from R2
+        run: |
+          mkdir -p "$SITE/data" "$(dirname "$GEOCODING_CACHE")"
+          aws s3 cp "$PRIVATE/cache/" "$(dirname "$GEOCODING_CACHE")/" --recursive
+          if aws s3 cp "$DATA/data/manifest.json" "$SITE/data/manifest.json"; then
+            state=$(jq -r '.state.path' "$SITE/data/manifest.json")
+            aws s3 cp "$DATA$state" "$SITE$state"
+          fi
+      - name: Collect from REMAJU
+        id: collect
+        run: |
+          set +e
+          uv run python main.py collect --mode live --output "$RUNS" ${MAX_PAGES:+--max-pages "$MAX_PAGES"} | tee report.json
+          code=${PIPESTATUS[0]}
+          echo "run_id=$(jq -r '.run_id' report.json)" >> "$GITHUB_OUTPUT"
+          jq '{status, scope, count, advertised_total, pages_complete, details_complete, failures: (.failures | length), error}' report.json
+          exit "$code"
+      - name: Geocode, convert and publish
+        env:
+          GEOCODING_API_KEY: ${{ secrets.GEOCODING_API_KEY }}
+        run: uv run python main.py process --run-dir "$RUNS/${{ steps.collect.outputs.run_id }}" --geocode --exchange --target "$SITE" ${MAX_PAGES:+--allow-partial}
+      - name: Upload release, then manifest
+        run: |
+          release="data/releases/${{ steps.collect.outputs.run_id }}"
+          aws s3 cp "$SITE/$release" "$DATA/$release" --recursive --cache-control "public, max-age=31536000, immutable"
+          aws s3 cp "$SITE/data/manifest.json" "$DATA/data/manifest.json" --content-type application/json --cache-control "public, max-age=60, must-revalidate"
+          jq '{dataset_version, scope, count, generated_at}' "$SITE/data/manifest.json"
+      - name: Save caches and run trace to the private bucket
+        if: ${{ always() && steps.collect.outputs.run_id != '' }}
+        run: |
+          test -d "$(dirname "$GEOCODING_CACHE")" && aws s3 cp "$(dirname "$GEOCODING_CACHE")/" "$PRIVATE/cache/" --recursive
+          aws s3 cp "$RUNS/${{ steps.collect.outputs.run_id }}" "$PRIVATE/runs/${{ steps.collect.outputs.run_id }}" --recursive --quiet

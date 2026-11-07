@@ -10,12 +10,13 @@ from utils.publication import publish_run
 
 
 class Processing:
-    def __init__(self, run_dir: Path, geocoder: GeocodingClient | None = None, rates: ExchangeRateClient | None = None, target: Path | None = None, today: date | None = None):
+    def __init__(self, run_dir: Path, geocoder: GeocodingClient | None = None, rates: ExchangeRateClient | None = None, target: Path | None = None, today: date | None = None, allow_partial: bool = False):
         self.run_dir = run_dir
         self.geocoder = geocoder
         self.rates = rates
         self.target = target
         self.today = today or date.today()
+        self.allow_partial = allow_partial
 
     def process(self) -> dict[str, Any]:
         auctions = self.load()
@@ -52,4 +53,4 @@ class Processing:
         return run
 
     def publish(self, run: dict[str, Any]) -> dict[str, Any]:
-        return publish_run(run, self.target)
+        return publish_run(run, self.target, self.allow_partial)
