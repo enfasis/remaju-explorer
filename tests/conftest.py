@@ -1,44 +1,35 @@
-"""Test fixtures for REMAJU scraper."""
-
-import sys
 from pathlib import Path
 
 import pytest
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from remaju.parser import RemajuParser
 
 
 @pytest.fixture
+def sample_data_dir() -> Path:
+    return Path(__file__).parent.parent / "test_data"
+
+
+@pytest.fixture
 def parser() -> RemajuParser:
-    """Create a parser instance."""
-    return NewRemajuParser()
+    return RemajuParser()
 
 
 @pytest.fixture
-def list_xml(sample_data_dir) -> str:
-    """Load list page XML."""
-    with open(sample_data_dir / "page1_list.xml", "r", encoding="utf-8") as f:
-        return f.read()
+def list_xml(sample_data_dir: Path) -> str:
+    return (sample_data_dir / "page1_list.xml").read_text(encoding="utf-8")
 
 
 @pytest.fixture
-def detail_html(sample_data_dir) -> str:
-    """Load detail base HTML."""
-    with open(sample_data_dir / "detail_base.html", "r", encoding="utf-8") as f:
-        return f.read()
+def detail_html(sample_data_dir: Path) -> str:
+    return (sample_data_dir / "detail_base.html").read_text(encoding="utf-8")
 
 
 @pytest.fixture
-def inmuebles_xml(sample_data_dir) -> str:
-    """Load inmuebles XML."""
-    with open(sample_data_dir / "detail_inmuebles.xml", "r", encoding="utf-8") as f:
-        return f.read()
+def inmuebles_xml(sample_data_dir: Path) -> str:
+    return (sample_data_dir / "detail_inmuebles.xml").read_text(encoding="utf-8")
 
 
 @pytest.fixture
-def cronograma_xml(sample_data_dir) -> str:
-    """Load cronograma XML."""
-    with open(sample_data_dir / "detail_cronograma.xml", "r", encoding="utf-8") as f:
-        return f.read()
+def cronograma_xml(sample_data_dir: Path) -> str:
+    return (sample_data_dir / "detail_cronograma.xml").read_text(encoding="utf-8")

@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+:root { font-family: Inter, system-ui, sans-serif; color: #0b2545; background: #f7f5ef; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; }
+.wrap { max-width: 1160px; margin: auto; padding-left: 24px; padding-right: 24px; }
+.header { background: #fff; border-bottom: 1px solid #e2e5e5; }
+.header-inner { min-height: 74px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.brand { display: flex; align-items: center; gap: 5px; font-size: 1.4rem; font-weight: 800; text-decoration: none; letter-spacing: -.05em; }
+.brand img { width: 42px; height: 42px; object-fit: contain; }
+.brand span { color: #b41934; }
+nav { display: flex; gap: 24px; font-size: .86rem; font-weight: 650; }
+nav a { text-decoration: none; }
+.intro { padding: 66px 0 40px; max-width: 770px; }
+.intro h1 { font-size: clamp(2.5rem, 6vw, 4.2rem); letter-spacing: -.055em; line-height: 1.05; margin: 12px 0 18px; }
+.intro p:not(.eyebrow) { color: #526272; font-size: 1.05rem; }
+.eyebrow { font-size: .7rem; font-weight: 750; letter-spacing: .12em; color: #ad1833; }
+.intro .freshness { font-size: .8rem !important; margin-top: 25px; }
+.filters { background: #fff; border: 1px solid #e0e5e4; border-radius: 10px; padding: 24px; }
+.section-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+h2 { margin: 3px 0 20px; font-size: 1.45rem; letter-spacing: -.03em; }
+.filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.filter-grid label { display: grid; gap: 7px; font-size: .8rem; font-weight: 650; }
+.filter-grid .search { grid-column: span 2; }
+input, select { width: 100%; height: 42px; border: 1px solid #cfd7d9; background: white; border-radius: 6px; padding: 0 10px; color: #0b2545; font: inherit; }
+:focus-visible { outline: 3px solid #ba5d25; outline-offset: 2px; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+.button { min-height: 38px; border-radius: 6px; padding: 0 14px; font-size: .8rem; font-weight: 650; cursor: pointer; }
+.button-outline { background: white; border: 1px solid #bbc7cb; color: #0b2545; }
+.button-ghost { background: transparent; border: 0; color: #ad1833; }
+.button-primary { background: #b41934; border: 1px solid #b41934; color: white; }
+.button:disabled { opacity: .5; cursor: default; }
+.notice { color: #9b4b16; font-size: .85rem; }
+.results { padding: 48px 0 60px; }
+.results .section-heading span { font-size: .8rem; color: #526272; }
+.list { border-top: 1px solid #d8dfdf; }
+.item { display: flex; justify-content: space-between; gap: 28px; padding: 22px 0; border-bottom: 1px solid #d8dfdf; }
+.item h3 { margin: 8px 0; font-size: 1.05rem; max-width: 680px; }
+.item h3 a { text-decoration: none; }
+.item h3 a:hover { text-decoration: underline; }
+.item p:not(.eyebrow) { color: #586a78; font-size: .85rem; }
+.badge { display: inline-block; border-radius: 4px; background: #e9eff1; padding: 5px 8px; font-size: .72rem; }
+.amount { min-width: 175px; display: grid; align-content: center; gap: 5px; text-align: right; }
+.amount span { color: #526272; font-size: .68rem; letter-spacing: .1em; }
+.amount strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.amount small { color: #526272; }
+.message { background: white; padding: 24px; border: 1px solid #e0e5e4; border-radius: 8px; }
+.detail { padding: 60px 0; min-height: 60vh; }
+.detail h1 { font-size: 2.3rem; letter-spacing: -.04em; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 20px; background: white; border: 1px solid #e0e5e4; }
+.footer { border-top: 1px solid #d8dfdf; padding-top: 24px; padding-bottom: 32px; font-size: .8rem; color: #526272; }
+.skip { position: absolute; left: -10000px; }
+.skip:focus { left: 8px; top: 8px; background: white; z-index: 10; }
+@media (max-width: 700px) { .wrap { padding-left: 16px; padding-right: 16px; } .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .intro { padding-top: 42px; } .item { flex-direction: column; gap: 8px; } .amount { text-align: left; } .section-heading { align-items: flex-start; } nav { gap: 12px; } }

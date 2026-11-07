@@ -1,0 +1,15 @@
+name: Refresh data
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: remaju-production
+  cancel-in-progress: false
+jobs:
+  safety-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "The collector and durable baseline restore are not verified. No live request or publication was attempted."
+          exit 1

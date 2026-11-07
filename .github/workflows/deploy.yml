@@ -1,0 +1,15 @@
+name: Deploy static explorer
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: remaju-production
+  cancel-in-progress: false
+jobs:
+  safety-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Deployment is disabled until accepted data restoration and publication are verified."
+          exit 1

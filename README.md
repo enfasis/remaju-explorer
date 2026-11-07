@@ -1,233 +1,137 @@
-# REMAJU Auction Data Downloader
+# RemaJu Explorer
 
-This is a Python project for downloading and processing auction data from the REMAJU (Remates Judiciales) website.
+A fast, independent way to explore judicial auctions published on Peru's REMAJU government website.
 
-We use `uv` for running and managing the app.
+## Goal
 
-To test functionality, run:
+Collect auction listings periodically, parse them into structured data, and publish a fast static website for searching, filtering, comparing, and opening the original notices. Visitors should browse a cached snapshot without waiting for the government website or a live scraper.
 
-```bash
-uv run edx-dle
-```
+## Current status
 
-Use modern Python 3.14 syntax. Prefer self-documenting code with clear names and method structure. Avoid comments. Keep the code and design simple overall.
+- Python 3.14+ scraper in `download.py`, managed with `uv`.
+- Structured auction data is currently saved to `data/auctions.json`; CSV export is planned.
+- Existing interactive viewer: Streamlit in `main.py`.
+- Parsing, models, geocoding, exchange rates, and browser automation live in `src/remaju/`.
+- Tests and HTML fixtures are in `tests/` and `test_data/`.
+- Server working directory: `susu:/mnt/nvme/opencode/workspace/projects/remaju-explorer`.
+- Static frontend, automated publication, and scheduled refreshes are planned, not implemented yet.
 
-## Flow Diagram
+The original implementation notes are preserved in [docs/scraper-notes.md](docs/scraper-notes.md). Some commands in those historical notes are outdated; use the commands below.
 
-```
-                    REMAJU Download Flow - View State Management
-═══════════════════════════════════════════════════════════════════════════════
+## Run the existing application
 
- 1. INITIALIZATION
-─────────────────
-┌──────────────────────────────────────┐
-│ get_list_page()                      │
-│   GET /remateExterno.xhtml           │
-│   • Extract view_state from HTML     │
-│   • self.view_state = vs1            │
-│   • self.list_view_state = vs1       │
-│   • self.current_list_offset = 0     │
-└──────────────────────┬───────────────┘
-                       │
-                       ▼
-
- 2. LIST PAGINATION (Working - First Page)
-───────────────────────────────────────────
-┌──────────────────────────────┐
-│ fetch_page(offset=0, rows=N) │
-│   POST /remateExterno.xhtml  │
-│   • Uses self.list_view_state│
-│   • Sends vs1 in payload     │
-└──────────┬───────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────┐
-│ AJAX Response (XML)                  │
-│   • Contains remate list (CDATA)     │
-│   • Contains NEW view_state (vs2)    │
-└──────────┬───────────────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────┐
-│ Update state                         │
-│   • self.list_view_state = vs2       │
-│   • self.current_list_offset = 0     │
-└──────────────────────────────────────┘
-                       │
-                       ▼
-
- 3. LIST PAGINATION (Page 2)
-────────────────────────────
-┌──────────────────────────────┐
-│ fetch_page(offset=N, rows=N) │
-│   POST /remateExterno.xhtml  │
-│   • Uses self.list_view_state│
-│   • Sends vs2 in payload     │
-└──────────┬───────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────┐
-│ AJAX Response (XML)                  │
-│   • Contains page 2 data             │
-│   • Contains NEW view_state (vs3)    │
-└──────────┬───────────────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────┐
-│ Update state                         │
-│   • self.list_view_state = vs3       │
-│   • self.current_list_offset = 4     │
-└──────────────────────────────────────┘
-                       │
-                       ▼
-
- 4. DETAIL DOWNLOAD FLOW (Per Remate)
-─────────────────────────────────────
-┌──────────────────────────────────────┐
-│ download_detail(remate)              │
-└──────────┬───────────────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────┐
-│ refresh_list_page()                  │
-│   GET /remateExterno.xhtml           │
-│   • Resets to list context           │
-│   • Extract view_state from HTML     │
-│   • self.view_state = vs4            │
-│   • self.list_view_state = vs4       │
-│                                      │
-│   IF current_list_offset > 0:        │
-│   fetch_page(current_offset, rows) │
-│     • Restores to current offset     │
-└──────────┬───────────────────────────┘
-           │
-           ▼
-┌──────────────────────────────┐
-│ _get_cards_info()            │
-│   fetch_page(offset=N, rows) │
-│   • Uses self.list_view_state│
-│   • Returns correct cards!   │
-└──────────┬───────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────┐
-│ Find card with matching remate #     │
-│   • Get detalle_id from card info    │
-└──────────┬───────────────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────┐
-│ click_detail_button(detalle_id)      │
-│   POST /remateExterno.xhtml          │
-│   • Uses self.view_state             │
-└──────────┬───────────────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────┐
-│ get_detail_page()                    │
-│   GET /mostrarDetalleRemate.xhtml    │
-│   • Extract view_state from HTML     │
-│   • self.view_state = vs5            │
-└──────────┬───────────────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────┐
-│ Fetch detail tabs                    │
-│   fetch_detail_tab("inmuebles")      │
-│   fetch_detail_tab("cronograma")     │
-│   • Uses self.view_state             │
-└──────────────────────────────────────┘
-                       │
-                       ▼
-
- 5. THE FIX - Offset Tracking
-─────────────────────────────
-
- PROBLEM (Before Fix):
- ─────────────────────
- • refresh_list_page() always reset to page 1
- • _get_cards_info() returned first 4 items only
- • Could not find remates from page 2+
-
- SOLUTION (Implemented):
- ───────────────────────
- ┌──────────────────────────────────────┐
- │ RemajuSiteClient                     │
- │   + current_list_offset = 0          │
- │   + rows_per_page = N (default 4)    │
- │                                      │
- │ After fetch_page(offset, rows):      │
- │   current_list_offset = offset       │
- │                                      │
- │ In refresh_list_page():              │
- │   After GET, IF offset > 0:          │
- │     fetch_page(current_offset, rows) │
- │     • Restores correct list position │
- └──────────────────────────────────────┘
-
- STATE TRACKING:
- ───────────────
- • self.view_state        - Current page view state
- • self.list_view_state   - List page view state
- • self.current_list_offset - Current position in list
- • self.rows_per_page     - Items per page (configurable, default 4)
-
- PAGE SIZE CONFIGURATION:
- ────────────────────────
- The number of items retrieved per page can be configured using the
- page_size parameter. This affects the payload fields:
-   • formBuscarRemateExterno:listaRemate_rows
-   • formBuscarRemateExterno:listaRemate_rppDD
-
- Example: page_size=8 will retrieve 8 items per page instead of 4.
- ```
-
-## Architecture
-
-```
-download.py
-├── RemajuSiteClient          # HTTP client for REMAJU website
-│   ├── get_list_page()       # Initial list page fetch
-│   ├── fetch_page()          # AJAX pagination
-│   ├── refresh_list_page()   # Restore list context + offset
-│   ├── click_detail_button() # Select remate for detail view
-│   ├── get_detail_page()     # Fetch detail HTML
-│   └── fetch_detail_tab()    # Fetch detail tabs (inmuebles/cronograma)
-│
-└── RemajuDataService         # High-level data operations
-    ├── download_list()       # Download paginated list
-    ├── download_detail()     # Download single remate details
-    └── download_auctions()   # Complete workflow
-
-src/remaju/
-├── new_parser.py             # HTML/XML parser for AJAX responses
-├── models.py                 # Pydantic data models
-├── captcha_solver.py         # Browser automation for CAPTCHA
-├── geocoding.py              # Google Maps geocoding
-└── exchange.py               # Exchange rate conversion
-```
-
-## Commands
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```bash
-# Install dependencies
-make install
-
-# Run the application
-make run
-
-# Download data
-make download
-
-# Run tests
-make test
-
-# Download with options
-python download.py --pages 2 --debug debug_output
-
-# Download with custom page size (8 items per page)
-python download.py --pages 2 --page-size 8
-
-# Download all options
-python download.py --pages 3 --page-size 8 --output data --debug debug_output
+cd /mnt/nvme/opencode/workspace/projects/remaju-explorer
+uv sync --locked
+uv run playwright install chromium
+uv run pytest
+uv run streamlit run main.py --server.address 127.0.0.1
 ```
+
+Linux may also need Playwright's system dependencies (`uv run playwright install-deps chromium`, requiring system package installation privileges).
+
+To access the viewer from your computer:
+
+```bash
+ssh -L 8501:127.0.0.1:8501 susu
+```
+
+Open `http://localhost:8501` while Streamlit is running on the server.
+
+Download a small sample:
+
+```bash
+uv run python download.py --pages 1 --no-geocoding --no-exchange
+```
+
+Download all pages:
+
+```bash
+uv run python download.py
+```
+
+The existing integrations use `GEMINI_API_KEY` and `geocoding_api_key` from the environment or local `.env`. External API usage may incur charges. Keep `.env` private and exclude it from published files.
+
+## Proposed low-cost architecture
+
+```text
+REMAJU
+  -> scheduled scraper on susu
+  -> parse, normalize, deduplicate, validate
+  -> public JSON snapshot + downloadable CSV + freshness metadata
+  -> static frontend and snapshot deployed to Cloudflare Pages
+  -> browser-side search, filters, sorting, and detail views
+```
+
+Start with a daily refresh on the existing server using cron or a systemd timer. This avoids GitHub-hosted execution quotas and reuses the machine already available. The server must be online for refreshes; visitors can still use the last successfully published snapshot when it is offline.
+
+For a small dataset, package the generated JSON and CSV directly with the static site and deploy the build output. Generated data does not need to be committed to Git. Keep each asset within the hosting provider's file-size limits; split larger datasets if needed.
+
+If the dataset grows or needs to update independently of the frontend, put the public snapshots in Cloudflare R2 and serve them through a cache-enabled custom domain. Configure CORS for the frontend origin. Keep full archives and raw downloaded pages separate from the public dataset.
+
+### Publication requirements
+
+1. Run only one refresh at a time, with a timeout and bounded retries.
+2. Preserve existing geocoding caches and avoid repeated paid lookups.
+3. Export stable auction identifiers, source links, normalized fields, and timestamps.
+4. Validate the snapshot before publishing; never replace the last good snapshot with a failed or partial scrape.
+5. Build into a separate output directory containing only public assets.
+6. Publish a complete snapshot atomically; for R2, upload versioned data before updating its manifest.
+7. Display the last successful refresh time and retain logs for failed refreshes.
+
+## Hosting costs and tradeoffs
+
+### Cloudflare Pages and R2
+
+Cloudflare Pages is the proposed static host. Check its current build, asset-size, and file-count limits before deployment. Static hosting does not require an always-running application server.
+
+R2 Standard currently includes 10 GB-month of storage, 1 million Class A operations, and 10 million Class B operations per month. Internet egress from R2 is free, but storage and operations above the free allowance are billed. Zero egress does not mean unlimited free usage. A custom domain and optional external APIs can add costs.
+
+### GitHub Pages and Git history
+
+GitHub Pages can work for a small project, subject to its usage limits and terms. Avoid treating it as an unlimited data distribution service. Git repository history and the published site's size are different limits; a claim that every repository inevitably hits a hard 1 GB history ceiling is misleading.
+
+Prevent history growth by keeping generated snapshots outside Git and deploying build artifacts directly. Track source code, configuration, and small test fixtures. A separate data branch still retains history unless explicitly pruned; Git LFS has its own quotas and is not a free hosting substitute.
+
+### Google Cloud
+
+Yes, Google Cloud can charge for data transferred to internet users. Cloud Storage pricing depends on storage location, destination, operations, and applicable free allowances. Generic Compute Engine Premium/Standard network-tier rates and allowances should not be assumed to apply to Cloud Storage downloads. Estimate using the actual product's pricing page before choosing it.
+
+## Can GitHub Actions run the scraper on cron?
+
+Yes. A workflow can use `schedule` plus `workflow_dispatch` for manual runs. It is an alternative to the server scheduler, especially if the scraper works reliably in a fresh hosted environment.
+
+- Scheduled workflows run from the default branch, with a minimum interval of five minutes.
+- Schedules are best-effort: jobs can be delayed or dropped under load. Choose a minute away from the top of the hour.
+- In public repositories, scheduled workflows are disabled after 60 days without repository activity. Monitor refresh timestamps and re-enable the workflow when necessary rather than relying on artificial keepalive commits.
+- Standard GitHub-hosted runners are free for public repositories. Larger runners are billed separately.
+- Private repositories have plan-dependent included minutes; GitHub Free typically includes 2,000 minutes monthly. Verify current billing and runner rates before enabling a frequent schedule.
+- GitHub-hosted jobs have a six-hour execution limit. Browser setup and dependency installation contribute to runtime, and artifact/cache storage has separate allowances.
+- At 10 minutes per daily run, budget roughly 300 execution minutes per 30-day month; hourly runs would require roughly 7,200, before other workflows and billing adjustments.
+
+Keep credentials in Actions secrets, persist required caches explicitly, use concurrency control, and publish validated output directly to hosting or object storage. Do not commit a new dataset on every refresh.
+
+## Implementation roadmap
+
+- [x] Transfer the existing project, Git history, uncommitted work, configuration, and data to susu.
+- [x] Document the current application and static-site direction.
+- [ ] Verify a small end-to-end scrape in the server environment.
+- [ ] Define the public dataset schema and implement JSON/CSV exports.
+- [ ] Build a mobile-friendly static frontend with search, location/status/price filters, sorting, and source links.
+- [ ] Add snapshot validation and last-successful-refresh metadata.
+- [ ] Deploy frontend and initial snapshot to Cloudflare Pages.
+- [ ] Add a daily scheduler, locking, logs, and failure reporting.
+- [ ] Measure dataset size and traffic; introduce R2 if needed.
+
+## References
+
+- [Cloudflare Pages limits](https://developers.cloudflare.com/pages/platform/limits/)
+- [Cloudflare R2 pricing](https://developers.cloudflare.com/r2/pricing/)
+- [GitHub scheduled workflow behavior](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+- [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+- [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
+- [Google Cloud Storage pricing](https://cloud.google.com/storage/pricing)
+
+Pricing and service limits should be checked again when deployment is configured.

@@ -14,3 +14,7 @@ data/
 tmp/
 .pytest_cache/
 .ruff_cache/
+var/
+web/node_modules/
+web/dist/
+web/src/router.ts
