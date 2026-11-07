@@ -17,7 +17,8 @@ export function AuctionBadges({ phase, until, status, kind, call, label = 'Estad
   if (!phase && !status && !kind && !call) return null
   return <ul className="badges" aria-label={label}>
     {kind && <Badge tone="yellow" label="Tipo de inmueble">{titleCase(kind)}</Badge>}
-    {phase && <Badge tone="blue" label="Fase actual">{phase}{until && <span className="badge-until"> · hasta {formatShortDate(until)}</span>}</Badge>}
+    {phase && <Badge tone="blue" label="Fase actual">{phase}</Badge>}
+    {phase && until && <li className="badge-until">hasta {formatShortDate(until)}</li>}
     {status && <Badge tone={statusTone(status)} label="Estado">{status}</Badge>}
     {call && <Badge tone="red" label="Convocatoria">{titleCase(call)}</Badge>}
   </ul>
