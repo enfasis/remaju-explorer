@@ -1,4 +1,0 @@
-account_id = "replace-with-cloudflare-account-id"
-
-enable_r2 = false
-publish_r2 = false
