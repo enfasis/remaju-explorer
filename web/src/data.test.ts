@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { compareDecimal, sortAuctions, type Summary } from './data'
+import { compareDecimal, siteUrl, sortAuctions, type Summary } from './data'
+
+describe('site paths', () => {
+  it('resolves data and assets under the configured base', () => {
+    expect(siteUrl('/demo/manifest.json')).toBe(`${import.meta.env.BASE_URL}demo/manifest.json`)
+  })
+})
 
 describe('decimal comparison', () => {
   it('compares large values without floating point conversion', () => {

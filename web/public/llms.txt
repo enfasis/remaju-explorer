@@ -1,9 +1,9 @@
 # RemaJu Explorer
 
-Independent static explorer of observed Peruvian judicial auctions.
+Independent static explorer of Peruvian judicial auctions. The GitHub Pages demo contains fictional examples only, not current auctions.
 
-- [Data access guide](/data-access.md)
-- [Current manifest](/data/manifest.json)
-- [Downloads](/downloads)
+- [Data access guide](data-access.md)
+- [Demo manifest](demo/manifest.json)
+- [Downloads](downloads)
 
 The source is REMAJU. Data is a snapshot and must not be interpreted as legal advice or proof that an absent auction was sold.

@@ -14,11 +14,17 @@ export type Summary = {
   detail_path: string
 }
 
-export type Manifest = { schema_version: number; generated_at: string; dataset_version: string; availability: { path: string }; archive?: { path: string } }
+export type Manifest = { schema_version: number; generated_at: string; dataset_version: string; availability: { path: string }; archive?: { path: string }; demo?: boolean }
 export type Snapshot = { auctions: Summary[] }
 
+export const dataPath = import.meta.env.DEV || import.meta.env.VITE_DEMO === 'true' ? 'demo/manifest.json' : 'data/manifest.json'
+
+export function siteUrl(path: string): string {
+  return `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
+}
+
 export async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(path)
+  const response = await fetch(siteUrl(path))
   if (!response.ok || !response.headers.get('content-type')?.includes('json')) throw new Error('No se pudieron cargar los datos.')
   return response.json() as Promise<T>
 }

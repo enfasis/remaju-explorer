@@ -13,15 +13,15 @@ This is an incremental implementation, not a completed replacement. The original
 - Containerized frontend build and tests; npm dependencies are locked. Compose and Make provide build/test/dev entry points.
 - A sample-only collection adapter and offline fixture replay. A sample is always non-publishable; the adapter has not been tested against the live source.
 - Local publication primitives with basic validation, local file locking, versioned releases and atomic manifest replacement. This is an experimental local fixture pipeline, not a verified production publisher.
-- Offline CI workflow. Manual refresh and deploy workflows deliberately fail closed until the missing safety gates are implemented.
+- Offline CI workflow. GitHub Pages can deploy the static frontend with explicitly fictional examples; the refresh workflow remains disabled.
 - Local data was copied to a private temporary backup; no changes to source data were intended.
 
 ## Not yet implemented
 
 - No full source collector, tested all-phase selection, detailed JSF navigation, complete action redaction, browser session handling, or end-to-end verified collection. Sample traces can contain sensitive source content and must remain private.
 - No independently verified completeness gate, durable chunked append-only history store, portable production restore/rollback, generated schemas, or cloud integration. The local publisher's flags/count checks are not proof of source completeness. Do not publish real data or infer absences from unverified input.
-- The frontend is an initial implementation: structured detail rendering, complete filter validation, downloadable CSV, browser/accessibility tests, a fixture-backed data bundle and deployment fallback are still required. It has no current data until an accepted manifest is supplied.
-- No active deployment or scheduled run. CI has not been verified on GitHub; deployment and refresh workflows are intentionally gated.
+- The frontend is an initial implementation: structured detail rendering, complete filter validation, downloadable CSV, and browser/accessibility tests are still required. It has no current data until an accepted manifest is supplied. Local development and the GitHub Pages demo use fictional examples, clearly labeled as such.
+- GitHub Pages deployment requires repository configuration and verification. No scheduled run is enabled; refresh remains intentionally gated.
 - The existing prototype's parser issues and legacy dependency tree remain; do not interpret an offline input validation as proof of current availability.
 
 See `docs/implementation-plan.md` for the remaining requirements and release gates. In particular, no live REMAJU requests or deployments have been authorized by the plan's offline implementation work.

@@ -1,0 +1,34 @@
+{
+  "auctions": [
+    {
+      "auction_id": "ejemplo:001",
+      "numero_remate": "EJEMPLO-001",
+      "descripcion": "Departamento de ejemplo",
+      "departamento": "LIMA",
+      "provincia": "LIMA",
+      "distrito": "MIRAFLORES",
+      "tipo_inmueble": "Departamento",
+      "fase": "Presentación de ofertas",
+      "estado": null,
+      "offer_date": "2026-12-15",
+      "offer_at": null,
+      "precio_base": { "amount": "180000.00", "currency": "PEN", "raw": "S/ 180,000.00" },
+      "detail_path": "demo/detail-001.json"
+    },
+    {
+      "auction_id": "ejemplo:002",
+      "numero_remate": "EJEMPLO-002",
+      "descripcion": "Terreno de ejemplo",
+      "departamento": "AREQUIPA",
+      "provincia": "AREQUIPA",
+      "distrito": "CAYMA",
+      "tipo_inmueble": "Terreno",
+      "fase": "Inscripción",
+      "estado": null,
+      "offer_date": "2026-12-10",
+      "offer_at": null,
+      "precio_base": { "amount": "45000.00", "currency": "USD", "raw": "US$ 45,000.00" },
+      "detail_path": "demo/detail-002.json"
+    }
+  ]
+}

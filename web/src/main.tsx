@@ -1,5 +1,7 @@
 import { createRoot } from 'react-dom/client'
-import { Routes } from '@generouted/react-router'
+import { routes } from '@generouted/react-router'
+import { createBrowserRouter, RouterProvider } from 'react-router'
 import './styles.css'
 
-createRoot(document.getElementById('root')!).render(<Routes />)
+const router = createBrowserRouter(routes, { basename: import.meta.env.BASE_URL })
+createRoot(document.getElementById('root')!).render(<RouterProvider router={router} />)

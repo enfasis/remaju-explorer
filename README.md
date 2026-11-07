@@ -9,12 +9,13 @@ Collect auction listings periodically, parse them into structured data, and publ
 ## Current status
 
 - Python 3.14+ scraper in `download.py`, managed with `uv`.
-- Structured auction data is currently saved to `data/auctions.json`; CSV export is planned.
+- The legacy scraper saves auction data to `data/auctions.json`; this accumulated file is not a verified current snapshot.
 - Existing interactive viewer: Streamlit in `main.py`.
 - Parsing, models, geocoding, exchange rates, and browser automation live in `src/remaju/`.
 - Tests and HTML fixtures are in `tests/` and `test_data/`.
 - Server working directory: `susu:/mnt/nvme/opencode/workspace/projects/remaju-explorer`.
-- Static frontend, automated publication, and scheduled refreshes are planned, not implemented yet.
+- An initial static frontend displays fictional examples locally and in the GitHub Pages demo. It is not a current auction feed.
+- GitHub Pages deployment is configured; scheduled collection and real-data publication remain disabled. See [deployment setup](docs/deployment.md).
 
 The original implementation notes are preserved in [docs/scraper-notes.md](docs/scraper-notes.md). Some commands in those historical notes are outdated; use the commands below.
 

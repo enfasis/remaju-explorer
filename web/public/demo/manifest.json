@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "dataset_version": "fictional-demo-v1",
+  "generated_at": "2026-01-01T00:00:00Z",
+  "demo": true,
+  "availability": { "path": "demo/availability.json" }
+}
