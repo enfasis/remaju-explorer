@@ -6,29 +6,87 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: cloudflare-pages
+  group: remaju-production
   cancel-in-progress: false
 jobs:
-  deploy:
-    if: ${{ vars.CLOUDFLARE_PAGES_PROJECT != '' }}
+  build:
+    if: ${{ github.ref == 'refs/heads/main' && vars.CLOUDFLARE_PAGES_PROJECT != '' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: src/web/package-lock.json
       - run: npm ci --no-audit --no-fund
-        working-directory: web
+        working-directory: src/web
       - run: npm test
-        working-directory: web
+        working-directory: src/web
       - run: npm run build
-        working-directory: web
+        working-directory: src/web
         env:
           VITE_DEMO: 'true'
-      - run: npx --yes wrangler@4.54.0 pages deploy web/dist --project-name="$CLOUDFLARE_PAGES_PROJECT" --branch=main
+      - uses: actions/upload-artifact@v4
+        with:
+          name: explorer-site
+          path: src/web/dist
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: explorer-site
+          path: site
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate authentication configuration
+        env:
+          AUTH_METHOD: ${{ vars.DEPLOY_AUTH_METHOD }}
+          IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+          PROJECT_SLUG: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          SECRET_PATH: ${{ vars.INFISICAL_SECRET_PATH }}
+        run: |
+          case "$AUTH_METHOD" in
+            ''|github-secrets) ;;
+            infisical-oidc) test -n "$IDENTITY_ID" && test -n "$PROJECT_SLUG" && test -n "$SECRET_PATH" ;;
+            *) echo 'Unsupported DEPLOY_AUTH_METHOD'; exit 1 ;;
+          esac
+      - name: Fetch Pages token through GitHub OIDC
+        if: ${{ vars.DEPLOY_AUTH_METHOD == 'infisical-oidc' }}
+        uses: Infisical/secrets-action@77ab1f4ccd183a543cb5b42435fbd181189f4995
+        with:
+          method: oidc
+          identity-id: ${{ vars.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
+          env-slug: ${{ vars.INFISICAL_ENVIRONMENT || 'prod' }}
+          secret-path: ${{ vars.INFISICAL_SECRET_PATH }}
+          oidc-audience: https://github.com/enfasis
+          recursive: false
+          include-imports: false
+      - name: Load Pages token from GitHub Secrets
+        if: ${{ vars.DEPLOY_AUTH_METHOD != 'infisical-oidc' }}
+        env:
+          PAGES_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          test -n "$PAGES_TOKEN"
+          printf 'CLOUDFLARE_API_TOKEN=%s\n' "$PAGES_TOKEN" >> "$GITHUB_ENV"
+      - name: Upload static site
+        run: |
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          npx --yes wrangler@4.54.0 pages deploy site --project-name="$CLOUDFLARE_PAGES_PROJECT" --branch=main
         env:
           CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}

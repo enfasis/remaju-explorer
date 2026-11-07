@@ -1,0 +1,4 @@
+organization = "enfatizados"
+workspaces {
+  name = "remaju-prod"
+}

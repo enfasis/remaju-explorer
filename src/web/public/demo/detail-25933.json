@@ -1,0 +1,87 @@
+{
+  "numero_remate": "25933",
+  "remate": {
+    "expediente": "00495-2025-0-1408-JR-CI-01",
+    "distrito_judicial": "ICA",
+    "organo_jurisdiccional": "",
+    "instancia": "JUZGADO ESPECIALIZADO",
+    "materia": "EJECUCION DE GARANTIAS",
+    "resolucion": "05",
+    "fecha_resolucion": "2026-06-09",
+    "convocatoria": "PRIMERA CONVOCATORIA",
+    "tasacion": "S/. 154,199.48",
+    "precio_base": "S/. 102,799.65",
+    "incremento_entre_ofertas": "S/. 308.40",
+    "arancel": "S/. 550.00",
+    "oblaje": "S/. 15,419.95",
+    "descripcion": "INMUEBLE UBICADO EN ASENTAMIENTO HUMANO SEÑOR DE LOS MILAGROS I ETAPA MZ. U LOTE 5, DISTRITO DE CHINCHA ALTA, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 168.6 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA REGISTRAL N° P21002361 DEL REGISTRO DE PROPIEDAD INMUEBLE DE LOS REGISTROS PÚBLICOS DE CHINCHA.",
+    "nro_inscritos": 0
+  },
+  "inmuebles": [
+    {
+      "partida_registral": "P21002361",
+      "tipo_inmueble": "CASA",
+      "direccion": "NMUEBLE UBICADO EN ASENTAMIENTO HUMANO SEÑOR DE LOS MILAGROS I ETAPA MZ. U LOTE 5, DISTRITO DE CHINCHA ALTA, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA,",
+      "carga_gravamen": "A. HIPOTECA, CONSTITUIDA A FAVOR DE LA CAJA MUNICIPAL DE AHORRO Y CREDITO DE AREQUIPA S.A., HASTA POR LA SUMA DE $ 27,668.00 DÓLARES AMERICANOS, INSCRITO EN EL ASIENTO N° 00004 DE LA PARTIDA REGISTRAL N° P21002361. B. INSCRIPCION DE EMBARGO CONSTITUIDA A FAVOR DE LA CAJA MUNICIPAL DE AHORRO Y CREDITO DE TRUJILLO S.A., HASTA POR LA SUMA DE S/ 35,000.00, MEDIANTE RESOLUCIÓN JUDICIAL N° 01 DE FECHA 31/05/2024 EXPEDIDO POR EL JUEZ DEL SEGUNDO JUZGADO DE PAZ LETRADO DE CHINCHA",
+      "porcentaje_a_remstar": "100 %",
+      "imagenes": 0,
+      "latitude": null,
+      "longitude": null,
+      "area_m2": null
+    }
+  ],
+  "cronograma": [
+    {
+      "nro": 1,
+      "fase": "Publicación e Inscripcion",
+      "fecha_inicio": "2026-11-07 00:00:00",
+      "fecha_fin": "2026-11-16 23:59:59"
+    },
+    {
+      "nro": 2,
+      "fase": "Validación de Inscripción",
+      "fecha_inicio": "2026-11-17 00:00:00",
+      "fecha_fin": "2026-11-19 23:59:59"
+    },
+    {
+      "nro": 3,
+      "fase": "Presentación de Ofertas",
+      "fecha_inicio": "2026-11-20 12:00:00",
+      "fecha_fin": "2026-11-21 11:59:59"
+    },
+    {
+      "nro": 4,
+      "fase": "Pago Saldo",
+      "fecha_inicio": "2026-11-23 00:00:00",
+      "fecha_fin": "2026-11-25 23:59:59"
+    },
+    {
+      "nro": 5,
+      "fase": "Validación del Saldo",
+      "fecha_inicio": "2026-11-26 00:00:00",
+      "fecha_fin": "2026-11-30 23:59:59"
+    }
+  ],
+  "seguimiento": {
+    "expediente": {
+      "nro_expediente": "00495-2025-0-1408-JR-CI-01",
+      "distrito_judicial": "ICA",
+      "especialidad": "CIVIL",
+      "instancia": "JUZGADO ESPECIALIZADO",
+      "organo_jurisdiccional": "JUZGADO ESPECIALIZADO"
+    },
+    "eventos": [
+      {
+        "nro_convocatoria": "PRIMERA CONVOCATORIA",
+        "fecha_registro": "2026-11-06",
+        "procesado_por": "ORDEN JUDICIAL",
+        "reanudado": "NO",
+        "fase_convocatoria": "Publicación e Inscripcion",
+        "estado_convocatoria": "En proceso",
+        "fecha_desierto": null
+      }
+    ]
+  },
+  "documents": [],
+  "source_url": "https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml"
+}

@@ -1,0 +1,87 @@
+{
+  "numero_remate": "25940",
+  "remate": {
+    "expediente": "00676-2016-0-2701-JM-CI-01",
+    "distrito_judicial": "MADRE DE DIOS",
+    "organo_jurisdiccional": "",
+    "instancia": "JUZGADO ESPECIALIZADO",
+    "materia": "OBLIGACION DE DAR SUMA DE DINERO",
+    "resolucion": "74",
+    "fecha_resolucion": "2026-11-03",
+    "convocatoria": "PRIMERA CONVOCATORIA",
+    "tasacion": "S/. 132,819.00",
+    "precio_base": "S/. 88,546.00",
+    "incremento_entre_ofertas": "S/. 265.64",
+    "arancel": "S/. 550.00",
+    "oblaje": "S/. 13,281.90",
+    "descripcion": "DEPARTAMENTO 302 UBICADO EN EL TERCER NIVEL DEL PREDIO ACUMULADO SIGNADO COMO LOTE “C” (ANTES FRACCIONES B, C, E, Y M) DEL INMUEBLE 21,22 Y 23 DE LA MANZANA “D” DE LA URBANIZACIÓN LA PLANICIE DEL DISTRITO DE SAN SEBASTIÁN PROVINCIA Y DEPARTAMENTO DEL CUSCO INSCRITO EN LA PARTIDA ELECTRÓNICA N° 11100523 DE LA OFICINA DE REGISTROS PÚBLICOS DE CUSCO.",
+    "nro_inscritos": 0
+  },
+  "inmuebles": [
+    {
+      "partida_registral": "11100523",
+      "tipo_inmueble": "DEPARTAMENTO",
+      "direccion": "UBICADO EN EL TERCER NIVEL DEL PREDIO ACUMULADO SIGNADO COMO LOTE “C” (ANTES FRACCIONES B, C, E, Y M) DEL INMUEBLE 21,22 Y 23 DE LA MANZANA “D” DE LA URBANIZACIÓN LA PLANICIE DEL DISTRITO DE SAN SEBASTIÁN PROVINCIA Y DEPARTAMENTO DEL CUSCO",
+      "carga_gravamen": "EN EL PROCESO CIVIL N° 00676-2016-0-2701-JM-CI-01, A FAVOR DE ANA ROCIÓ DEL ALCAZAR CÓRDOVA, A FIN DE GARANTIZAR LAS OBLIGACIONES, DE LAS PARTIDAS N° 11100523 DE LA OFICINA DE REGISTROS PÚBLICOS DE CUSCO, HASTA POR S/330,000.00 SOLES.",
+      "porcentaje_a_remstar": "100 %",
+      "imagenes": 1,
+      "latitude": null,
+      "longitude": null,
+      "area_m2": null
+    }
+  ],
+  "cronograma": [
+    {
+      "nro": 1,
+      "fase": "Publicación e Inscripcion",
+      "fecha_inicio": "2026-11-07 00:00:00",
+      "fecha_fin": "2026-11-16 23:59:59"
+    },
+    {
+      "nro": 2,
+      "fase": "Validación de Inscripción",
+      "fecha_inicio": "2026-11-17 00:00:00",
+      "fecha_fin": "2026-11-19 23:59:59"
+    },
+    {
+      "nro": 3,
+      "fase": "Presentación de Ofertas",
+      "fecha_inicio": "2026-11-20 12:00:00",
+      "fecha_fin": "2026-11-21 11:59:59"
+    },
+    {
+      "nro": 4,
+      "fase": "Pago Saldo",
+      "fecha_inicio": "2026-11-23 00:00:00",
+      "fecha_fin": "2026-11-25 23:59:59"
+    },
+    {
+      "nro": 5,
+      "fase": "Validación del Saldo",
+      "fecha_inicio": "2026-11-26 00:00:00",
+      "fecha_fin": "2026-11-30 23:59:59"
+    }
+  ],
+  "seguimiento": {
+    "expediente": {
+      "nro_expediente": "00676-2016-0-2701-JM-CI-01",
+      "distrito_judicial": "MADRE DE DIOS",
+      "especialidad": "CIVIL",
+      "instancia": "JUZGADO ESPECIALIZADO",
+      "organo_jurisdiccional": "JUZGADO ESPECIALIZADO"
+    },
+    "eventos": [
+      {
+        "nro_convocatoria": "PRIMERA CONVOCATORIA",
+        "fecha_registro": "2026-11-06",
+        "procesado_por": "ORDEN JUDICIAL",
+        "reanudado": "NO",
+        "fase_convocatoria": "Publicación e Inscripcion",
+        "estado_convocatoria": "En proceso",
+        "fecha_desierto": null
+      }
+    ]
+  },
+  "documents": [],
+  "source_url": "https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml"
+}

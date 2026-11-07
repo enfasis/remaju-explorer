@@ -1,0 +1,87 @@
+{
+  "numero_remate": "25934",
+  "remate": {
+    "expediente": "00681-2024-0-0401-JR-CI-05",
+    "distrito_judicial": "AREQUIPA",
+    "organo_jurisdiccional": "",
+    "instancia": "JUZGADO ESPECIALIZADO",
+    "materia": "EJECUCION DE GARANTIAS",
+    "resolucion": "24",
+    "fecha_resolucion": "2026-09-21",
+    "convocatoria": "PRIMERA CONVOCATORIA",
+    "tasacion": "$ 60,100.00",
+    "precio_base": "$ 40,066.67",
+    "incremento_entre_ofertas": "$ 120.20",
+    "arancel": "S/. 550.00",
+    "oblaje": "$ 6,010.00",
+    "descripcion": "CONVOCAR AL REMATE ELECTRÓNICO JUDICIAL (REM@JU) A EFECTOS DE PROCEDER AL REMATE EN PRIMERA CONVOCATORIA SOBRE EL CIEN POR CIENTO (100%) DE LAS ACCIONES Y DERECHOS SOBRE EL BIEN MATERIA DE LITIS",
+    "nro_inscritos": 0
+  },
+  "inmuebles": [
+    {
+      "partida_registral": "04013061",
+      "tipo_inmueble": "CASA",
+      "direccion": "UBICADO EN LA UBI. RUR. SECTOR CHACLLA, DENOMINADO CHACLLA HUERTA, U.C. 03880, CÓDIGO DE PREDIO 8-7308320, DISTRITO DE HAYNACOTAS, PROVINCIA DE LA UNIÓN Y DEPARTAMENTO DE AREQUIPA, INSCRITO EN LA PARTIDA REGISTRAL NRO. 04013061 DEL REGISTRO DE PREDIOS RÚSTICOS DE LA ZONA REGISTRAL NRO. XII - SEDE AREQUIPA.",
+      "carga_gravamen": "ASIENTO D00002: CONSTITUCIÓN DE HIPOTECA UNILATERAL: CONSTITUIDA POR SUS PROPIETARIOS LA SOCIEDAD CONYUGAL FORMADA POR OLGA NAVARRO ZELA Y PERCY MONCCA QUISPE, A FAVOR DE LA COOPERATIVA DE AHORRO Y CRÉDITO FONDSURCO HASTA POR LA SUMA DE US$ 51,460.00 DÓLARES AMERICANOS QUE CUBRIRÁ EL PAGO DE CAPITAL, INTERESES COMPENSATORIOS, INTERESES MORATORIOS, COMISIONES, GASTOS, COSTAS Y COSTOS DEL PROCESO. ANOTACIÓN DE CORRELACIÓN DE ÁREAS NATURALES PROTEGIDA: EL PREDIO INSCRITO EN LA PRESENTE PARTIDA SE ENCUENTRA COMPRENDIDO DENTRO DEL ÁREA NATURAL PROTEGIDA DENOMINADA RESERVA PAISAJISTICA DEL COTAHUASI Y COMO TAL SE ENCUENTRA SUJETA A LAS LIMITACIONES Y CARGAS LEGALES AMBIENTALES PREVISTAS EN LA LEY DE ÁREAS NATURALES PROTEGIDAS.",
+      "porcentaje_a_remstar": "100 %",
+      "imagenes": 0,
+      "latitude": null,
+      "longitude": null,
+      "area_m2": null
+    }
+  ],
+  "cronograma": [
+    {
+      "nro": 1,
+      "fase": "Publicación e Inscripcion",
+      "fecha_inicio": "2026-11-07 00:00:00",
+      "fecha_fin": "2026-11-16 23:59:59"
+    },
+    {
+      "nro": 2,
+      "fase": "Validación de Inscripción",
+      "fecha_inicio": "2026-11-17 00:00:00",
+      "fecha_fin": "2026-11-19 23:59:59"
+    },
+    {
+      "nro": 3,
+      "fase": "Presentación de Ofertas",
+      "fecha_inicio": "2026-11-20 12:00:00",
+      "fecha_fin": "2026-11-21 11:59:59"
+    },
+    {
+      "nro": 4,
+      "fase": "Pago Saldo",
+      "fecha_inicio": "2026-11-23 00:00:00",
+      "fecha_fin": "2026-11-25 23:59:59"
+    },
+    {
+      "nro": 5,
+      "fase": "Validación del Saldo",
+      "fecha_inicio": "2026-11-26 00:00:00",
+      "fecha_fin": "2026-11-30 23:59:59"
+    }
+  ],
+  "seguimiento": {
+    "expediente": {
+      "nro_expediente": "00681-2024-0-0401-JR-CI-05",
+      "distrito_judicial": "AREQUIPA",
+      "especialidad": "CIVIL",
+      "instancia": "JUZGADO ESPECIALIZADO",
+      "organo_jurisdiccional": "JUZGADO ESPECIALIZADO"
+    },
+    "eventos": [
+      {
+        "nro_convocatoria": "PRIMERA CONVOCATORIA",
+        "fecha_registro": "2026-11-06",
+        "procesado_por": "ORDEN JUDICIAL",
+        "reanudado": "NO",
+        "fase_convocatoria": "Publicación e Inscripcion",
+        "estado_convocatoria": "En proceso",
+        "fecha_desierto": null
+      }
+    ]
+  },
+  "documents": [],
+  "source_url": "https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml"
+}

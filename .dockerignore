@@ -9,5 +9,11 @@ tmp
 var
 dist
 node_modules
-web/node_modules
-web/dist
+src/web/node_modules
+src/web/dist
+**/.terraform
+**/*.tfstate*
+**/*.tfplan
+**/tfplan
+**/*.tfvars
+**/backend.hcl

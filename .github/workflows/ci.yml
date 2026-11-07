@@ -5,9 +5,25 @@ on:
 permissions:
   contents: read
 jobs:
+  infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.0
+      - run: terraform fmt -check -recursive
+        working-directory: infra/terraform
+      - run: terraform init -backend=false -input=false -lockfile=readonly
+        working-directory: infra/terraform
+      - run: terraform validate
+        working-directory: infra/terraform
+      - run: terraform test
+        working-directory: infra/terraform
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - run: make test
+      - run: make browser-test

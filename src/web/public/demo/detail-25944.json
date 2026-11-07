@@ -1,0 +1,87 @@
+{
+  "numero_remate": "25944",
+  "remate": {
+    "expediente": "00784-2018-0-1408-JR-CI-01",
+    "distrito_judicial": "ICA",
+    "organo_jurisdiccional": "",
+    "instancia": "JUZGADO ESPECIALIZADO",
+    "materia": "EJECUCION DE GARANTIAS",
+    "resolucion": "21",
+    "fecha_resolucion": "2025-08-15",
+    "convocatoria": "PRIMERA CONVOCATORIA",
+    "tasacion": "S/. 581,793.23",
+    "precio_base": "S/. 387,862.15",
+    "incremento_entre_ofertas": "S/. 1,163.59",
+    "arancel": "S/. 1,100.00",
+    "oblaje": "S/. 58,179.32",
+    "descripcion": "INMUEBLE UBICADO EN EL CENTRO POBLADO EDUARDO ARENA COSTA MZ. E LOTE N° 05, DISTRITO DE SUNAMPE, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 947.60 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA REGISTRAL P21008181, DEL REGISTRO DE PROPIEDAD INMUEBLE DE LOS REGISTROS PÚBLICOS DE CHINCHA.",
+    "nro_inscritos": 0
+  },
+  "inmuebles": [
+    {
+      "partida_registral": "P21008181",
+      "tipo_inmueble": "LOCAL",
+      "direccion": "INMUEBLE UBICADO EN EL CENTRO POBLADO EDUARDO ARENA COSTA MZ. E LOTE N° 05, DISTRITO DE SUNAMPE, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 947.60 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA REGISTRAL P21008181, DEL REGISTRO DE PROPIEDAD INMUEBLE DE LOS REGISTROS PÚBLICOS DE CHINCHA.",
+      "carga_gravamen": "A. HIPOTECA CONSTITUIDA A FAVOR DEL BANCO DE CREDITO DEL PERU, HASTA POR LA SUMA DE S/ 315,361.28, INSCRITO EN EL ASIENTO N° 00005 DE LA PARTIDA REGISTRAL N° P21008181. B. INSCRIPCIÓN DE EMBARGO CONSTITUIDA A FAVOR DEL BBVA BANCO CONTINENTAL, HASTA POR LA SUMA DE S/ 70,000.00, INSCRITO EN EL ASIENTO N° 00006, MEDIANTE RESOLUCIÓN JUDICIAL N° 02 DE FECHA 17/10/2018 SOBRE OBLIGACIÓN DE DAR SUMA DE DINERO EXPEDIDO POR EL JUEZ DEL JUZGADO CIVIL DE CHINCHA DE LA PARTIDA REGISTRAL N° P21008181. C. MODIFICACIÓN DE HIPOTECA, EL ASIENTO N° 00005 HA SIDO MODIFICADA, EN EL CUAL SE DIO LA CESIÓN DE DERECHO A FAVOR DE LA SOCIEDAD DECAROPE S.A.C., QUIEN ES EL QUE ASUME LA TITULARIDAD DE LA GARANTÍA HIPOTECARIA, INSCRITO EN EL ASIENTO N° 00007 DE LA PARTIDA REGISTRAL N° P21008181.",
+      "porcentaje_a_remstar": "100 %",
+      "imagenes": 0,
+      "latitude": null,
+      "longitude": null,
+      "area_m2": 947.6
+    }
+  ],
+  "cronograma": [
+    {
+      "nro": 1,
+      "fase": "Publicación e Inscripcion",
+      "fecha_inicio": "2026-11-07 00:00:00",
+      "fecha_fin": "2026-11-16 23:59:59"
+    },
+    {
+      "nro": 2,
+      "fase": "Validación de Inscripción",
+      "fecha_inicio": "2026-11-17 00:00:00",
+      "fecha_fin": "2026-11-19 23:59:59"
+    },
+    {
+      "nro": 3,
+      "fase": "Presentación de Ofertas",
+      "fecha_inicio": "2026-11-20 12:00:00",
+      "fecha_fin": "2026-11-21 11:59:59"
+    },
+    {
+      "nro": 4,
+      "fase": "Pago Saldo",
+      "fecha_inicio": "2026-11-23 00:00:00",
+      "fecha_fin": "2026-11-25 23:59:59"
+    },
+    {
+      "nro": 5,
+      "fase": "Validación del Saldo",
+      "fecha_inicio": "2026-11-26 00:00:00",
+      "fecha_fin": "2026-11-30 23:59:59"
+    }
+  ],
+  "seguimiento": {
+    "expediente": {
+      "nro_expediente": "00784-2018-0-1408-JR-CI-01",
+      "distrito_judicial": "ICA",
+      "especialidad": "CIVIL",
+      "instancia": "JUZGADO ESPECIALIZADO",
+      "organo_jurisdiccional": "JUZGADO ESPECIALIZADO"
+    },
+    "eventos": [
+      {
+        "nro_convocatoria": "PRIMERA CONVOCATORIA",
+        "fecha_registro": "2026-11-06",
+        "procesado_por": "ORDEN JUDICIAL",
+        "reanudado": "NO",
+        "fase_convocatoria": "Publicación e Inscripcion",
+        "estado_convocatoria": "En proceso",
+        "fecha_desierto": null
+      }
+    ]
+  },
+  "documents": [],
+  "source_url": "https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml"
+}

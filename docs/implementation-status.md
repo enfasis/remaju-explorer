@@ -15,13 +15,15 @@ This is an incremental implementation, not a completed replacement. The original
 - Local publication primitives with basic validation, local file locking, versioned releases and atomic manifest replacement. This is an experimental local fixture pipeline, not a verified production publisher.
 - Offline CI workflow. Cloudflare Pages deployment is configured for a partial example; the refresh workflow remains disabled.
 - Local data was copied to a private temporary backup; no changes to source data were intended.
+- The frontend now lives in `src/web/` and renders structured sample details (Remate, Inmuebles, Cronograma, Seguimiento and document availability), whole-card links, a glossary, indicative currency conversion and optional coordinate-only maps. See `source-detail-review.md` for the actual extraction limitations; the sample has no coordinates or saved images.
 
 ## Not yet implemented
 
 - No full source collector, tested all-phase selection, detailed JSF navigation, complete action redaction, browser session handling, or end-to-end verified collection. Sample traces can contain sensitive source content and must remain private.
 - No independently verified completeness gate, durable chunked append-only history store, portable production restore/rollback, generated schemas, or cloud integration. The local publisher's flags/count checks are not proof of source completeness. Do not publish real data or infer absences from unverified input.
-- The frontend is an initial implementation: structured detail rendering, complete filter validation, downloadable CSV, and browser/accessibility tests are still required. It has no verified current data. Local development and the Cloudflare demo use a limited three-page sample gathered on 2026-11-07.
+- The frontend is an initial implementation: complete filter validation, downloadable CSV and comprehensive browser/accessibility tests are still required. Structured sample details and a browser smoke test now exist. It has no verified current data. Local development and the Cloudflare demo use a limited three-page sample gathered on 2026-11-07.
 - Cloudflare deployment requires repository configuration and verification. No scheduled run is enabled; refresh remains intentionally gated.
+- Terraform now defines a Direct Upload Pages project/domain association, opt-in R2 storage/CORS/public domain and non-secret GitHub/DNS outputs. `enfatizados` defines the Pages CNAME. GitHub deployment supports a Pages token secret or Infisical GitHub OIDC delivery. These configurations are not applied or end-to-end verified; Infisical trust, HCP workspace, tokens, GitHub settings and deployment still require owner setup/approval.
 - The existing prototype's parser issues and legacy dependency tree remain; do not interpret an offline input validation as proof of current availability.
 
 See `docs/implementation-plan.md` for the remaining requirements and release gates. In particular, no live REMAJU requests or deployments have been authorized by the plan's offline implementation work.

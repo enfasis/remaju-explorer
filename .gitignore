@@ -15,6 +15,14 @@ tmp/
 .pytest_cache/
 .ruff_cache/
 var/
-web/node_modules/
-web/dist/
-web/src/router.ts
+src/web/node_modules/
+src/web/dist/
+src/web/src/router.ts
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+*.tfvars
+backend.hcl
+crash.log

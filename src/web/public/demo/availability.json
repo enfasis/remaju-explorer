@@ -1,0 +1,256 @@
+{
+  "auctions": [
+    {
+      "auction_id": "remaju:25944",
+      "numero_remate": "25944",
+      "descripcion": "INMUEBLE UBICADO EN EL CENTRO POBLADO EDUARDO ARENA COSTA MZ. E LOTE N° 05, DISTRITO DE SUNAMPE, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 947.60 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA REGISTRAL P21008181, DEL REGISTRO DE PROPIEDAD INMUEBLE DE LOS REGISTROS PÚBLICOS DE CHINCHA.",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "LOCAL",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "387862.15",
+        "currency": "PEN",
+        "raw": "S/. 387,862.15"
+      },
+      "detail_path": "demo/detail-25944.json",
+      "coordinates": [],
+      "thumbnail_path": null
+    },
+    {
+      "auction_id": "remaju:25943",
+      "numero_remate": "25943",
+      "descripcion": "INMUEBLE UBICADO EN CALLE ITALIA N° 280 TIENDA 97, DISTRITO DE CHINCHA ALTA, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 6.00 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA ELECTRÓNICA N° 11036359 DE LOS REGISTROS DE PROPIEDADES DEL INMUEBLE DE LOS REGISTROS PÚBLICOS DE CHINCHA",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "LOCAL",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "108885.33",
+        "currency": "PEN",
+        "raw": "S/. 108,885.33"
+      },
+      "detail_path": "demo/detail-25943.json",
+      "coordinates": [],
+      "thumbnail_path": null
+    },
+    {
+      "auction_id": "remaju:25942",
+      "numero_remate": "25942",
+      "descripcion": "INMUEBLE UBICADO EN CALLE ITALIA NUM 280 INTE 120, DISTRITO DE CHINCHA ALTA, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 6.00 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA ELECTRÓNICA N° 11046517",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "LOCAL",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "108885.33",
+        "currency": "PEN",
+        "raw": "S/. 108,885.33"
+      },
+      "detail_path": "demo/detail-25942.json",
+      "coordinates": [],
+      "thumbnail_path": null
+    },
+    {
+      "auction_id": "remaju:25941",
+      "numero_remate": "25941",
+      "descripcion": "INMUEBLE UBICADO EN CALLE ITALIA NUM 280 INTE 350, DISTRITO DE CHINCHA ALTA, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 6.00 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA ELECTRÓNICA N° 11035835",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "LOCAL",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "108885.33",
+        "currency": "PEN",
+        "raw": "S/. 108,885.33"
+      },
+      "detail_path": "demo/detail-25941.json",
+      "coordinates": [],
+      "thumbnail_path": null
+    },
+    {
+      "auction_id": "remaju:25940",
+      "numero_remate": "25940",
+      "descripcion": "DEPARTAMENTO 302 UBICADO EN EL TERCER NIVEL DEL PREDIO ACUMULADO SIGNADO COMO LOTE “C” (ANTES FRACCIONES B, C, E, Y M) DEL INMUEBLE 21,22 Y 23 DE LA MANZANA “D” DE LA URBANIZACIÓN LA PLANICIE DEL DISTRITO DE SAN SEBASTIÁN PROVINCIA Y DEPARTAMENTO DEL CUSCO INSCRITO EN LA PARTIDA ELECTRÓNICA N° 11100523 DE LA OFICINA DE REGISTROS PÚBLICOS DE CUSCO.",
+      "departamento": "CUSCO",
+      "provincia": "CUSCO",
+      "distrito": null,
+      "tipo_inmueble": "DEPARTAMENTO",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "88546.00",
+        "currency": "PEN",
+        "raw": "S/. 88,546.00"
+      },
+      "detail_path": "demo/detail-25940.json",
+      "coordinates": [],
+      "thumbnail_path": null
+    },
+    {
+      "auction_id": "remaju:25939",
+      "numero_remate": "25939",
+      "descripcion": "INMUEBLE UBICADO EN CALLE ITALIA NUM 280 INTE 286, DISTRITO DE CHINCHA ALTA, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 7.67 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA ELECTRÓNICA N° 11036815",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "LOCAL",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "138581.33",
+        "currency": "PEN",
+        "raw": "S/. 138,581.33"
+      },
+      "detail_path": "demo/detail-25939.json",
+      "coordinates": [],
+      "thumbnail_path": null
+    },
+    {
+      "auction_id": "remaju:25938",
+      "numero_remate": "25938",
+      "descripcion": "INMUEBLE UBICADO EN CALLE ITALIA NUM 280 TIENDA 95-96, DISTRITO DE CHINCHA ALTA, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 12.00 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA ELECTRÓNICA N° 11038968",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "LOCAL",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "205397.33",
+        "currency": "PEN",
+        "raw": "S/. 205,397.33"
+      },
+      "detail_path": "demo/detail-25938.json",
+      "coordinates": [],
+      "thumbnail_path": null
+    },
+    {
+      "auction_id": "remaju:25937",
+      "numero_remate": "25937",
+      "descripcion": "INMUEBLE UBICADO EN PSJ. PAGO DE PÍLPA, TOMA DE GUAYABO NUM S/N ZONA URBANA, DISTRITO DE CHINCHA ALTA, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 1,814.99 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA ELECTRÓNICA N° 05000308.",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "CASA",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "289536.00",
+        "currency": "PEN",
+        "raw": "S/. 289,536.00"
+      },
+      "detail_path": "demo/detail-25937.json",
+      "coordinates": [],
+      "thumbnail_path": null
+    },
+    {
+      "auction_id": "remaju:25936",
+      "numero_remate": "25936",
+      "descripcion": "URBANIZACIÓN POPULAR BELLAMAR, SECTOR IV PRIMERA ETAPA MZ. W - LT. 22",
+      "departamento": "ANCASH",
+      "provincia": "SANTA",
+      "distrito": null,
+      "tipo_inmueble": "CASA",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "320000.00",
+        "currency": "PEN",
+        "raw": "S/. 320,000.00"
+      },
+      "detail_path": "demo/detail-25936.json",
+      "coordinates": [],
+      "thumbnail_path": null
+    },
+    {
+      "auction_id": "remaju:25935",
+      "numero_remate": "25935",
+      "descripcion": "INMUEBLE UBICADO EN EL CENTRO POBLADO PROGRESO MZ. “R” LOTE 5, DISTRITO DE CHINCHA ALTA, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 106.50 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA ELECTRÓNICA N° P21016358 DEL REGISTRO DE PROPIEDAD INMUEBLE DE LOS REGISTRO PÚBLICOS DE CHINCHA",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "CASA",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "40436.24",
+        "currency": "PEN",
+        "raw": "S/. 40,436.24"
+      },
+      "detail_path": "demo/detail-25935.json",
+      "coordinates": [],
+      "thumbnail_path": null
+    },
+    {
+      "auction_id": "remaju:25934",
+      "numero_remate": "25934",
+      "descripcion": "CONVOCAR AL REMATE ELECTRÓNICO JUDICIAL (REM@JU) A EFECTOS DE PROCEDER AL REMATE EN PRIMERA CONVOCATORIA SOBRE EL CIEN POR CIENTO (100%) DE LAS ACCIONES Y DERECHOS SOBRE EL BIEN MATERIA DE LITIS",
+      "departamento": "AREQUIPA",
+      "provincia": "LA UNION",
+      "distrito": null,
+      "tipo_inmueble": "CASA",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "40066.67",
+        "currency": "USD",
+        "raw": "$ 40,066.67"
+      },
+      "detail_path": "demo/detail-25934.json",
+      "coordinates": [],
+      "thumbnail_path": null
+    },
+    {
+      "auction_id": "remaju:25933",
+      "numero_remate": "25933",
+      "descripcion": "INMUEBLE UBICADO EN ASENTAMIENTO HUMANO SEÑOR DE LOS MILAGROS I ETAPA MZ. U LOTE 5, DISTRITO DE CHINCHA ALTA, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 168.6 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA REGISTRAL N° P21002361 DEL REGISTRO DE PROPIEDAD INMUEBLE DE LOS REGISTROS PÚBLICOS DE CHINCHA.",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "CASA",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "102799.65",
+        "currency": "PEN",
+        "raw": "S/. 102,799.65"
+      },
+      "detail_path": "demo/detail-25933.json",
+      "coordinates": [],
+      "thumbnail_path": null
+    }
+  ]
+}

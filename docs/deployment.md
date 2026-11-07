@@ -6,12 +6,20 @@ Cloudflare Pages serves the static explorer. GitHub Actions will eventually coll
 
 ## Deploy the site
 
+Terraform now defines the infrastructure in [`infra/terraform/`](../infra/terraform/README.md). Use its bootstrap, plan/approval and DNS-ordering instructions instead of manually creating duplicate resources. Defaults are Pages Direct Upload at `remaju.mejora.me`, with R2 disabled. Pages uses a **CNAME**, not an A record; `enfatizados` owns that DNS record. Infrastructure has not been applied merely by adding these files.
+
+Terraform outputs `github_repository_variables`, `required_secret_names`, `dns_records`, `site_url` and `pages_url`. Copy output variables into GitHub Actions repository variables. Secrets are configured separately and never output. The account ID can now be a repository variable; the workflow still supports the legacy secret.
+
+The deployment workflow supports either a GitHub Pages API-token secret or **GitHub OIDC → Infisical → scoped Cloudflare token**, selected by `DEPLOY_AUTH_METHOD`. Cloudflare's documented Direct Upload flow does not provide a native GitHub OIDC exchange. Infisical federation removes the long-lived secret from GitHub, not from Cloudflare. See the infrastructure guide for exact trust restrictions and setup. The `production` GitHub environment must restrict deployments to `main`.
+
+The following dashboard steps remain an alternative to Terraform, not additional resources to create after applying it:
+
 1. Create a Cloudflare Pages project using **Direct Upload**, not Git integration; set its production branch to `main`. Choose a project name and either its `pages.dev` hostname or a custom domain.
 2. In Cloudflare create a scoped account API token with **Account → Cloudflare Pages → Edit**. Find the account ID in the dashboard.
-3. In GitHub under **Settings → Secrets and variables → Actions**, add repository secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`, and repository variable `CLOUDFLARE_PAGES_PROJECT` with the project name. Do not put tokens in chat, Git, or browser environment variables.
+3. In GitHub under **Settings → Secrets and variables → Actions**, add repository variables `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_PAGES_PROJECT`, and secret `CLOUDFLARE_API_TOKEN` (or use the documented Infisical OIDC mode). Create the `production` environment restricted to `main`. Do not put tokens in chat, Git, or browser environment variables.
 4. Push to `main` or run **Deploy explorer to Cloudflare Pages** manually. It tests and builds the demo, then uses Wrangler Direct Upload. The job skips if the project variable is absent. Review the action output and deployment URL. This deploy does not start the scraper or upload real data.
 
-The frontend currently uses the local example manifest in its demo build. Once a verified R2 publication exists, the reader must be configured and tested for its public data origin, CORS, caching, and manifest path before changing the build. Do not silently replace an accepted publication with sample data.
+The frontend in `src/web/` currently uses the local example manifest in its demo build. Once a verified R2 publication exists, the reader must be configured and tested for its public data origin, CORS, caching, and manifest path before changing the build. Do not silently replace an accepted publication with sample data.
 
 ## Prepare R2 for the future collector
 

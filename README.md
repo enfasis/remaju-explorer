@@ -8,6 +8,8 @@ Collect auction listings periodically, parse them into structured data, and publ
 
 ## Current status
 
+The Python package lives in `src/remaju/`; the static frontend lives in `src/web/`. See [detail extraction coverage](docs/source-detail-review.md) for tab contents and image, document, geocoding and conversion limitations.
+
 - Python 3.14+ scraper in `download.py`, managed with `uv`.
 - The legacy scraper saves auction data to `data/auctions.json`; this accumulated file is not a verified current snapshot.
 - Existing interactive viewer: Streamlit in `main.py`.
@@ -16,6 +18,10 @@ Collect auction listings periodically, parse them into structured data, and publ
 - Server working directory: `susu:/mnt/nvme/opencode/workspace/projects/remaju-explorer`.
 - An initial static frontend displays examples locally. It is not a current auction feed.
 - Cloudflare Pages deployment is configured; scheduled collection and R2 publication remain disabled. See [deployment setup](docs/deployment.md).
+
+For a browser smoke test, start the frontend, install Playwright's Chromium and its system dependencies, then run `python tests/browser_smoke.py` in the collector environment. Set `EXPLORER_URL` to test a different running site.
+
+Alternatively, run `make test` then `make browser-test`. The browser target downloads Chromium and system packages but does not collect REMAJU data; exchange rates and map tiles are mocked. It verifies card navigation, currency display without hiding auctions, detail sections, the optional map, the glossary and dark mode.
 
 The original implementation notes are preserved in [docs/scraper-notes.md](docs/scraper-notes.md). Some commands in those historical notes are outdated; use the commands below.
 
@@ -136,3 +142,7 @@ Keep credentials in Actions secrets, persist required caches explicitly, use con
 - [Google Cloud Storage pricing](https://cloud.google.com/storage/pricing)
 
 Pricing and service limits should be checked again when deployment is configured.
+
+## Infrastructure
+
+Cloudflare Pages, optional R2, GitHub Actions outputs, Infisical OIDC authentication, and `remaju.mejora.me` DNS coordination are documented in [infra/terraform/README.md](infra/terraform/README.md). Terraform changes require reviewed plans and explicit approval; adding configuration does not deploy resources or enable the collector.

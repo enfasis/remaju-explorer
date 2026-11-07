@@ -2,6 +2,8 @@
 
 Status: proposed implementation, not an implemented architecture. Reviewed 2026-11-05.
 
+Later product decisions supersede the frontend portions of this historical plan: Tamagui replaces Nyxhora, the frontend lives at `src/web/`, currency selects display conversion rather than source-currency filtering, and maps are opt-in with verified coordinates only. Current implementation and limitations are documented in `implementation-status.md` and `source-detail-review.md`.
+
 Frontend decisions updated 2026-11-07: React + Nyxhora UI, `@generouted/react-router`, URL-synced filters, filters above content with no sidebar, descending offer-date ordering, and public LLM data-access documentation. These replace the earlier Base UI/Preact alternatives.
 
 ## 1. Read this first

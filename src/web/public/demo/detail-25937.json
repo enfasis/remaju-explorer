@@ -1,0 +1,87 @@
+{
+  "numero_remate": "25937",
+  "remate": {
+    "expediente": "00070-2025-0-1408-JR-CI-01",
+    "distrito_judicial": "ICA",
+    "organo_jurisdiccional": "",
+    "instancia": "JUZGADO ESPECIALIZADO",
+    "materia": "EJECUCION DE GARANTIAS",
+    "resolucion": "14",
+    "fecha_resolucion": "2026-09-16",
+    "convocatoria": "PRIMERA CONVOCATORIA",
+    "tasacion": "S/. 434,304.00",
+    "precio_base": "S/. 289,536.00",
+    "incremento_entre_ofertas": "S/. 868.61",
+    "arancel": "S/. 825.00",
+    "oblaje": "S/. 43,430.40",
+    "descripcion": "INMUEBLE UBICADO EN PSJ. PAGO DE PÍLPA, TOMA DE GUAYABO NUM S/N ZONA URBANA, DISTRITO DE CHINCHA ALTA, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 1,814.99 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA ELECTRÓNICA N° 05000308.",
+    "nro_inscritos": 0
+  },
+  "inmuebles": [
+    {
+      "partida_registral": "05000308",
+      "tipo_inmueble": "CASA",
+      "direccion": "INMUEBLE UBICADO EN PASAJE PAGO DE PÍLPA, TOMA DE GUAYABO NUM S/N ZONA URBANA, DISTRITO DE CHINCHA ALTA, PROVINCIA DE CHINCHA, DEPARTAMENTO DE ICA, DE UN ÁREA DE 1,814.99 M2, CUYAS CARACTERÍSTICAS OBRAN INSCRITAS EN LA PARTIDA ELECTRÓNICA N° 05000308",
+      "carga_gravamen": "HIPOTECA, CONSTITUIDA A FAVOR DEL BANCO BBVA PERÚ, HASTA POR LA SUMA DE US$ 127,884.52 DÓLARES AMERICANOS, INSCRITO EN EL ASIENTO N° D00014 DE LA PARTIDA ELECTRÓNICA N° 05000308.",
+      "porcentaje_a_remstar": "100 %",
+      "imagenes": 0,
+      "latitude": null,
+      "longitude": null,
+      "area_m2": 1814.99
+    }
+  ],
+  "cronograma": [
+    {
+      "nro": 1,
+      "fase": "Publicación e Inscripcion",
+      "fecha_inicio": "2026-11-07 00:00:00",
+      "fecha_fin": "2026-11-16 23:59:59"
+    },
+    {
+      "nro": 2,
+      "fase": "Validación de Inscripción",
+      "fecha_inicio": "2026-11-17 00:00:00",
+      "fecha_fin": "2026-11-19 23:59:59"
+    },
+    {
+      "nro": 3,
+      "fase": "Presentación de Ofertas",
+      "fecha_inicio": "2026-11-20 12:00:00",
+      "fecha_fin": "2026-11-21 11:59:59"
+    },
+    {
+      "nro": 4,
+      "fase": "Pago Saldo",
+      "fecha_inicio": "2026-11-23 00:00:00",
+      "fecha_fin": "2026-11-25 23:59:59"
+    },
+    {
+      "nro": 5,
+      "fase": "Validación del Saldo",
+      "fecha_inicio": "2026-11-26 00:00:00",
+      "fecha_fin": "2026-11-30 23:59:59"
+    }
+  ],
+  "seguimiento": {
+    "expediente": {
+      "nro_expediente": "00070-2025-0-1408-JR-CI-01",
+      "distrito_judicial": "ICA",
+      "especialidad": "CIVIL",
+      "instancia": "JUZGADO ESPECIALIZADO",
+      "organo_jurisdiccional": "JUZGADO ESPECIALIZADO"
+    },
+    "eventos": [
+      {
+        "nro_convocatoria": "PRIMERA CONVOCATORIA",
+        "fecha_registro": "2026-11-06",
+        "procesado_por": "ORDEN JUDICIAL",
+        "reanudado": "NO",
+        "fase_convocatoria": "Publicación e Inscripcion",
+        "estado_convocatoria": "En proceso",
+        "fecha_desierto": null
+      }
+    ]
+  },
+  "documents": [],
+  "source_url": "https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml"
+}

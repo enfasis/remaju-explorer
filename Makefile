@@ -1,4 +1,4 @@
-.PHONY: help download sample run test clean install build test-container web-build dev
+.PHONY: help download sample run test browser-test clean install build test-container web-build dev
 
 help:
 	@echo "build/install: build collector and web images"
@@ -32,6 +32,10 @@ test:
 	docker run --rm --network none remaju-collector:dev pytest -q
 	docker run --rm --network none remaju-web:dev npm run test
 	docker run --rm --network none remaju-web:dev npm run build
+
+browser-test:
+	docker compose up -d web
+	docker compose run --rm -e EXPLORER_URL=http://web:5173/ collector sh -c 'playwright install --with-deps chromium && python tests/browser_smoke.py'
 
 install:
 	docker compose build
