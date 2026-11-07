@@ -1,34 +1,232 @@
 {
   "auctions": [
     {
-      "auction_id": "ejemplo:001",
-      "numero_remate": "EJEMPLO-001",
-      "descripcion": "Departamento de ejemplo",
-      "departamento": "LIMA",
-      "provincia": "LIMA",
-      "distrito": "MIRAFLORES",
-      "tipo_inmueble": "Departamento",
-      "fase": "Presentación de ofertas",
+      "auction_id": "remaju:25944",
+      "numero_remate": "25944",
+      "descripcion": "Inmueble: LOCAL",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "LOCAL",
+      "fase": null,
       "estado": null,
-      "offer_date": "2026-12-15",
+      "offer_date": null,
       "offer_at": null,
-      "precio_base": { "amount": "180000.00", "currency": "PEN", "raw": "S/ 180,000.00" },
-      "detail_path": "demo/detail-001.json"
+      "precio_base": {
+        "amount": "387862.15",
+        "currency": "PEN",
+        "raw": "S/. 387,862.15"
+      },
+      "detail_path": "demo/detail-25944.json"
     },
     {
-      "auction_id": "ejemplo:002",
-      "numero_remate": "EJEMPLO-002",
-      "descripcion": "Terreno de ejemplo",
-      "departamento": "AREQUIPA",
-      "provincia": "AREQUIPA",
-      "distrito": "CAYMA",
-      "tipo_inmueble": "Terreno",
-      "fase": "Inscripción",
+      "auction_id": "remaju:25943",
+      "numero_remate": "25943",
+      "descripcion": "Inmueble: LOCAL",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "LOCAL",
+      "fase": null,
       "estado": null,
-      "offer_date": "2026-12-10",
+      "offer_date": null,
       "offer_at": null,
-      "precio_base": { "amount": "45000.00", "currency": "USD", "raw": "US$ 45,000.00" },
-      "detail_path": "demo/detail-002.json"
+      "precio_base": {
+        "amount": "108885.33",
+        "currency": "PEN",
+        "raw": "S/. 108,885.33"
+      },
+      "detail_path": "demo/detail-25943.json"
+    },
+    {
+      "auction_id": "remaju:25942",
+      "numero_remate": "25942",
+      "descripcion": "Inmueble: LOCAL",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "LOCAL",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "108885.33",
+        "currency": "PEN",
+        "raw": "S/. 108,885.33"
+      },
+      "detail_path": "demo/detail-25942.json"
+    },
+    {
+      "auction_id": "remaju:25941",
+      "numero_remate": "25941",
+      "descripcion": "Inmueble: LOCAL",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "LOCAL",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "108885.33",
+        "currency": "PEN",
+        "raw": "S/. 108,885.33"
+      },
+      "detail_path": "demo/detail-25941.json"
+    },
+    {
+      "auction_id": "remaju:25940",
+      "numero_remate": "25940",
+      "descripcion": "Inmueble: DEPARTAMENTO",
+      "departamento": "CUSCO",
+      "provincia": "CUSCO",
+      "distrito": null,
+      "tipo_inmueble": "DEPARTAMENTO",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "88546.00",
+        "currency": "PEN",
+        "raw": "S/. 88,546.00"
+      },
+      "detail_path": "demo/detail-25940.json"
+    },
+    {
+      "auction_id": "remaju:25939",
+      "numero_remate": "25939",
+      "descripcion": "Inmueble: LOCAL",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "LOCAL",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "138581.33",
+        "currency": "PEN",
+        "raw": "S/. 138,581.33"
+      },
+      "detail_path": "demo/detail-25939.json"
+    },
+    {
+      "auction_id": "remaju:25938",
+      "numero_remate": "25938",
+      "descripcion": "Inmueble: LOCAL",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "LOCAL",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "205397.33",
+        "currency": "PEN",
+        "raw": "S/. 205,397.33"
+      },
+      "detail_path": "demo/detail-25938.json"
+    },
+    {
+      "auction_id": "remaju:25937",
+      "numero_remate": "25937",
+      "descripcion": "Inmueble: CASA",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "CASA",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "289536.00",
+        "currency": "PEN",
+        "raw": "S/. 289,536.00"
+      },
+      "detail_path": "demo/detail-25937.json"
+    },
+    {
+      "auction_id": "remaju:25936",
+      "numero_remate": "25936",
+      "descripcion": "Inmueble: CASA",
+      "departamento": "ANCASH",
+      "provincia": "SANTA",
+      "distrito": null,
+      "tipo_inmueble": "CASA",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "320000.00",
+        "currency": "PEN",
+        "raw": "S/. 320,000.00"
+      },
+      "detail_path": "demo/detail-25936.json"
+    },
+    {
+      "auction_id": "remaju:25935",
+      "numero_remate": "25935",
+      "descripcion": "Inmueble: CASA",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "CASA",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "40436.24",
+        "currency": "PEN",
+        "raw": "S/. 40,436.24"
+      },
+      "detail_path": "demo/detail-25935.json"
+    },
+    {
+      "auction_id": "remaju:25934",
+      "numero_remate": "25934",
+      "descripcion": "Inmueble: CASA",
+      "departamento": "AREQUIPA",
+      "provincia": "LA UNION",
+      "distrito": null,
+      "tipo_inmueble": "CASA",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "40066.67",
+        "currency": "USD",
+        "raw": "$ 40,066.67"
+      },
+      "detail_path": "demo/detail-25934.json"
+    },
+    {
+      "auction_id": "remaju:25933",
+      "numero_remate": "25933",
+      "descripcion": "Inmueble: CASA",
+      "departamento": "ICA",
+      "provincia": "CHINCHA",
+      "distrito": null,
+      "tipo_inmueble": "CASA",
+      "fase": null,
+      "estado": null,
+      "offer_date": null,
+      "offer_at": null,
+      "precio_base": {
+        "amount": "102799.65",
+        "currency": "PEN",
+        "raw": "S/. 102,799.65"
+      },
+      "detail_path": "demo/detail-25933.json"
     }
   ]
 }

@@ -1,28 +1,27 @@
-# Deployment and data
+# Cloudflare deployment and data
 
-## GitHub Pages demo
+## Intended architecture
 
-The `Deploy demo to GitHub Pages` workflow builds the static frontend on pushes to `main` and on manual dispatch. It runs frontend tests before deploying. It does not run the scraper, access REMAJU, or publish local data. The build sets `VITE_DEMO=true` and displays the fictional files in `web/public/demo/`. They are not a current dataset.
+Cloudflare Pages serves the static explorer. GitHub Actions will eventually collect on a schedule and publish validated, versioned JSON and CSV to R2 without adding datasets to Git history. The browser requires a manifest and JSON summaries as well as optional CSV downloads; CSV alone is not the current explorer contract. The collector and R2 publisher are **not production-ready**: the scheduled workflow remains disabled and no real data is uploaded. A sample of three pages is not a complete observation.
 
-Repository owner setup:
+## Deploy the site
 
-1. Push `main` to GitHub and open **Settings → Pages**.
-2. Under **Build and deployment**, select **GitHub Actions** as the source. The `github-pages` environment must permit deployment from `main`.
-3. Run the deploy workflow from **Actions** if the initial push ran before Pages was configured. Check the deployment URL in the workflow. For this repository it is normally `https://enfasis.github.io/remaju-explorer/`.
-4. Verify the homepage, filters, sample details, direct links, `llms.txt`, `data-access.md`, and `demo/manifest.json`. GitHub Pages serves the SPA fallback with HTTP 404 on direct application routes; the browser can render the route but some crawlers and clients may treat it as missing. Missing data files also retain HTTP 404.
+1. Create a Cloudflare Pages project using **Direct Upload**, not Git integration; set its production branch to `main`. Choose a project name and either its `pages.dev` hostname or a custom domain.
+2. In Cloudflare create a scoped account API token with **Account → Cloudflare Pages → Edit**. Find the account ID in the dashboard.
+3. In GitHub under **Settings → Secrets and variables → Actions**, add repository secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`, and repository variable `CLOUDFLARE_PAGES_PROJECT` with the project name. Do not put tokens in chat, Git, or browser environment variables.
+4. Push to `main` or run **Deploy explorer to Cloudflare Pages** manually. It tests and builds the demo, then uses Wrangler Direct Upload. The job skips if the project variable is absent. Review the action output and deployment URL. This deploy does not start the scraper or upload real data.
 
-The Pages build uses the repository-specific base path `/remaju-explorer/`. Change `VITE_BASE_PATH` in the deploy workflow if the repository name or hosting path changes. GitHub Pages availability and repository visibility depend on your GitHub plan and settings.
+The frontend currently uses the local example manifest in its demo build. Once a verified R2 publication exists, the reader must be configured and tested for its public data origin, CORS, caching, and manifest path before changing the build. Do not silently replace an accepted publication with sample data.
 
-## Future real data
+## Prepare R2 for the future collector
 
-Do not upload `data/auctions.json`, cookies, browser sessions, caches, raw traces, `.env`, or unreviewed personal/legal information. The legacy file is an accumulated, untimestamped output and cannot establish current availability. A real release requires an approved live-source feasibility test, a complete validated observation, privacy/reuse review, a durable history strategy, and a tested release/promotion and rollback process. See `implementation-status.md` and `implementation-plan.md`. The existing sample collector and publisher do not establish completeness.
+1. Enable R2 in Cloudflare (Cloudflare may require billing enrollment), create a Standard bucket, and decide a name, location/jurisdiction, retention policy and acceptable monthly budget.
+2. Create an R2 API token scoped to that bucket with **Object Read & Write**. Store the resulting access key ID and secret access key as GitHub Actions secrets `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY`. The R2 token is separate from the Pages API token. Add variables `R2_BUCKET`, `R2_ENDPOINT` (`https://<ACCOUNT_ID>.r2.cloudflarestorage.com`, or the jurisdiction-specific endpoint), and `R2_PUBLIC_BASE_URL` when a public domain is configured. These are proposed names for the future pipeline; the current workflow does not consume them.
+3. Choose whether public access uses a custom domain or development-only `r2.dev`; configure restrictive CORS for the Pages origin. Keep private captures, session state, sensitive data and secrets out of the public bucket. Configure cache and content types for manifest, versioned files, CSV and JSON.
+4. Before enabling a schedule, implement and test full-source collection, challenge detection, completeness validation, privacy review, durable prior-state restoration, immutable versioned uploads, single-writer locking, manifest-last promotion and rollback. Never publish a partial crawl, infer removals from one, or overwrite last-good data on errors. GitHub's scheduler is best-effort and may be delayed or disabled after repository inactivity.
 
-## Cloudflare later
+Provide the project name, hostname, R2 bucket name/region, retention and budget decisions, and confirmation that the secrets were configured. Never send the secret values to an assistant. See [Pages Direct Upload](https://developers.cloudflare.com/pages/how-to/use-direct-upload-with-continuous-integration/) and [R2 token setup](https://developers.cloudflare.com/r2/api/tokens/).
 
-No Cloudflare account access or credentials are needed for GitHub Pages. If you later want Cloudflare hosting or durable storage, decide whether the site and a small verified snapshot should be bundled on Cloudflare Pages, or whether independent data/history needs R2. Pages alone does not establish durable append-only history. Check current provider limits and pricing before choosing.
+## Cost considerations
 
-To prepare a Cloudflare deployment, provide the account/project name, preferred public hostname (or permission to use a `pages.dev` hostname), whether the repository should be connected to Cloudflare or deployed through GitHub Actions, and the desired retention/storage policy. For R2, also decide the bucket name, region/jurisdiction, public access domain and acceptable budget. Configure required scoped credentials as GitHub Actions secrets yourself; never send tokens in chat or commit them. Cloudflare's current documentation specifies the permissions required for the chosen method. An approved verified release and tested deployment pipeline are still prerequisites; this repository does not yet implement cloud publication.
-
-## Search discoverability
-
-The static HTML includes a Spanish title, description and Open Graph metadata using relevant terms such as “REMAJU”, “remates judiciales” and “Perú”. The demo is explicitly described as fictional. Google Trends comparisons for those specific terms were not available to verify during implementation, so these are descriptive candidates, not a claim about ranked search volume. To compare them, use [Google Trends](https://trends.google.com/trends/explore?geo=PE&q=REMAJU,remates%20judiciales,remates%20judiciales%20Peru) with Peru and the desired date range; Trends reports relative interest, not exact volume. After launch, verify the site in Google Search Console to inspect actual search queries and indexing. GitHub Pages SPA routes return 404 on direct requests, so only the root is reliably indexable without a different hosting/fallback approach.
+Cloudflare's [R2 pricing](https://developers.cloudflare.com/r2/pricing/) currently includes 10 GB-month Standard storage, 1 million Class A and 10 million Class B operations monthly, and no direct egress charge. Requests and storage beyond those allowances can incur charges, as can connected services; the Infrequent Access class has different pricing. Cloudflare Pages Free has [build, file count and asset size limits](https://developers.cloudflare.com/pages/platform/limits/). GitHub Actions has its own plan-dependent allowances. Check current terms and pricing and set budget alerts; the architecture is not guaranteed to remain free.

@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { compareDecimal, siteUrl, sortAuctions, type Summary } from './data'
+import { compareDecimal, orderAuctions, siteUrl, sortAuctions, type Summary } from './data'
 
 describe('site paths', () => {
   it('resolves data and assets under the configured base', () => {
     expect(siteUrl('/demo/manifest.json')).toBe(`${import.meta.env.BASE_URL}demo/manifest.json`)
+  })
+})
+
+describe('result ordering', () => {
+  it('sorts precise prices and keeps missing values last', () => {
+    const items = [{ auction_id: '1', precio_base: { amount: '9007199254740993' } }, { auction_id: '2', precio_base: null }, { auction_id: '3', precio_base: { amount: '9' } }] as Summary[]
+    expect(orderAuctions(items, 'price-asc').map(a => a.auction_id)).toEqual(['3', '1', '2'])
+    expect(orderAuctions(items, 'price-desc').map(a => a.auction_id)).toEqual(['1', '3', '2'])
   })
 })
 

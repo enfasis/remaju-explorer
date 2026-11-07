@@ -1,7 +1,9 @@
 {
   "schema_version": 1,
-  "dataset_version": "fictional-demo-v1",
-  "generated_at": "2026-01-01T00:00:00Z",
+  "dataset_version": "sample-2026-11-07",
+  "generated_at": "2026-11-07T02:19:41Z",
   "demo": true,
-  "availability": { "path": "demo/availability.json" }
+  "availability": {
+    "path": "demo/availability.json"
+  }
 }

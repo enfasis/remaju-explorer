@@ -14,8 +14,8 @@ Collect auction listings periodically, parse them into structured data, and publ
 - Parsing, models, geocoding, exchange rates, and browser automation live in `src/remaju/`.
 - Tests and HTML fixtures are in `tests/` and `test_data/`.
 - Server working directory: `susu:/mnt/nvme/opencode/workspace/projects/remaju-explorer`.
-- An initial static frontend displays fictional examples locally and in the GitHub Pages demo. It is not a current auction feed.
-- GitHub Pages deployment is configured; scheduled collection and real-data publication remain disabled. See [deployment setup](docs/deployment.md).
+- An initial static frontend displays examples locally. It is not a current auction feed.
+- Cloudflare Pages deployment is configured; scheduled collection and R2 publication remain disabled. See [deployment setup](docs/deployment.md).
 
 The original implementation notes are preserved in [docs/scraper-notes.md](docs/scraper-notes.md). Some commands in those historical notes are outdated; use the commands below.
 

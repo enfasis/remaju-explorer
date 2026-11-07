@@ -46,3 +46,19 @@ export function compareDecimal(left: string, right: string): number | null {
   const scale = Math.max(lf.length, rf.length)
   return l.length - r.length || l.localeCompare(r) || lf.padEnd(scale, '0').localeCompare(rf.padEnd(scale, '0'))
 }
+
+export function orderAuctions(items: Summary[], order: string): Summary[] {
+  const sorted = sortAuctions(items)
+  if (order === 'date-asc') return sorted.sort((a, b) => {
+    const left = a.offer_date ?? a.offer_at?.slice(0, 10) ?? ''
+    const right = b.offer_date ?? b.offer_at?.slice(0, 10) ?? ''
+    return !left ? (right ? 1 : 0) : !right ? -1 : left.localeCompare(right)
+  })
+  if (order === 'price-asc' || order === 'price-desc') return sorted.sort((a, b) => {
+    const left = a.precio_base?.amount
+    const right = b.precio_base?.amount
+    if (!left || !right) return left ? -1 : right ? 1 : 0
+    return (compareDecimal(left, right) ?? 0) * (order === 'price-desc' ? -1 : 1)
+  })
+  return sorted
+}

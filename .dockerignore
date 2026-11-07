@@ -9,3 +9,5 @@ tmp
 var
 dist
 node_modules
+web/node_modules
+web/dist
