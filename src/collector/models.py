@@ -1,27 +1,22 @@
-"""Pydantic models for REMAJU auction data."""
-
+from dataclasses import dataclass
 from datetime import date, datetime
-from typing import List, Optional
+
 from pydantic import BaseModel
 
 
 class Inmueble(BaseModel):
-    """Property/Inmueble model."""
-
     partida_registral: str
     tipo_inmueble: str
     direccion: str
-    carga_gravamen: Optional[str] = None
+    carga_gravamen: str | None = None
     porcentaje_a_remstar: str
     imagenes: int
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    area_m2: Optional[float] = None
+    latitude: float | None = None
+    longitude: float | None = None
+    area_m2: float | None = None
 
 
 class CronogramaFase(BaseModel):
-    """Schedule phase model."""
-
     nro: int
     fase: str
     fecha_inicio: datetime
@@ -29,8 +24,6 @@ class CronogramaFase(BaseModel):
 
 
 class RemateTab(BaseModel):
-    """Remate tab data model."""
-
     expediente: str
     distrito_judicial: str
     organo_jurisdiccional: str
@@ -40,7 +33,7 @@ class RemateTab(BaseModel):
     materia: str
     resolucion: str
     fecha_resolucion: date
-    archivo: Optional[str] = None
+    archivo: str | None = None
     convocatoria: str
     tasacion: str
     precio_base: str
@@ -49,47 +42,38 @@ class RemateTab(BaseModel):
     oblaje: str
     descripcion: str
     nro_inscritos: int
-    # Computed values (both currencies for optimization)
-    precio_base_pen: Optional[float] = None
-    precio_base_usd: Optional[float] = None
-    arancel_pen: Optional[float] = None
-    arancel_usd: Optional[float] = None
-    oblaje_pen: Optional[float] = None
-    oblaje_usd: Optional[float] = None
-    exchange_rate: Optional[float] = None  # Rate used for conversion
-    exchange_rate_date: Optional[date] = None  # Date of exchange rate
+    precio_base_pen: float | None = None
+    precio_base_usd: float | None = None
+    arancel_pen: float | None = None
+    arancel_usd: float | None = None
+    oblaje_pen: float | None = None
+    oblaje_usd: float | None = None
+    exchange_rate: float | None = None
+    exchange_rate_date: date | None = None
 
 
 class InmueblesTab(BaseModel):
-    """Inmuebles tab data model."""
-
     distrito_judicial: str
     departamento: str
     provincia: str
     distrito: str
-    inmuebles: List[Inmueble]
+    inmuebles: list[Inmueble]
 
 
 class CronogramaTab(BaseModel):
-    """Cronograma tab data model."""
-
-    fases: List[CronogramaFase]
+    fases: list[CronogramaFase]
 
 
 class RemateDetail(BaseModel):
-    """Complete detail model with all tabs."""
-
     numero_remate: str
     url: str
-    tabs: List[str]
+    tabs: list[str]
     remate_tab: RemateTab
     inmuebles_tab: InmueblesTab
     cronograma_tab: CronogramaTab
 
 
 class Expediente(BaseModel):
-    """Expediente model for seguimiento."""
-
     nro_expediente: str
     distrito_judicial: str
     especialidad: str
@@ -98,27 +82,21 @@ class Expediente(BaseModel):
 
 
 class SeguimientoEvento(BaseModel):
-    """Seguimiento event model (represents one convocatoria)."""
-
     nro_convocatoria: str
     fecha_registro: date
     procesado_por: str
     reanudado: str
     fase_convocatoria: str
     estado_convocatoria: str
-    fecha_desierto: Optional[date] = None
+    fecha_desierto: date | None = None
 
 
 class Seguimiento(BaseModel):
-    """Complete seguimiento model."""
-
     expediente: Expediente
-    eventos: List[SeguimientoEvento]
+    eventos: list[SeguimientoEvento]
 
 
 class RemateListItem(BaseModel):
-    """Remate item from list page."""
-
     numero_remate: str
     convocatoria: str
     tipo: str
@@ -127,24 +105,19 @@ class RemateListItem(BaseModel):
     hora_presentacion: str
     fase: str
     estado: str
-    precio_base: Optional[str] = None
+    precio_base: str | None = None
     descripcion: str
 
 
 class Auction(BaseModel):
-    """Complete auction model combining list, detail and seguimiento."""
-
     numero_remate: str
     list_data: RemateListItem
     detail: RemateDetail
-    seguimiento: Optional[Seguimiento] = None
+    seguimiento: Seguimiento | None = None
 
-    @property
-    def has_inmuebles(self) -> bool:
-        """Check if auction has properties."""
-        return len(self.detail.inmuebles_tab.inmuebles) > 0
 
-    @property
-    def total_fases(self) -> int:
-        """Get total number of phases."""
-        return len(self.detail.cronograma_tab.fases)
+@dataclass(frozen=True)
+class Card:
+    listing: RemateListItem
+    detail_id: str
+    tracking_id: str | None

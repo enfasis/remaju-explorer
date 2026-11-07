@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from .archive import canonical_bytes, export_csv, identifier, read_json, reconcile, utc_now, write_events, write_json
+from .sample_export import current_status, schedule
 
 
 PHASES = {"publicación e inscripcion", "publicación e inscripción", "validación de inscripción", "presentación de ofertas"}
@@ -68,6 +69,7 @@ def summary(auction: dict[str, Any]) -> dict[str, Any]:
     property_tab = detail.get("inmuebles_tab") or {}
     remate = detail.get("remate_tab") or {}
     properties = property_tab.get("inmuebles") or []
+    status = current_status(auction.get("seguimiento"))
     raw_date = listing.get("fecha_presentacion")
     try:
         offer_date = date.fromisoformat(raw_date).isoformat() if raw_date else None
@@ -80,9 +82,10 @@ def summary(auction: dict[str, Any]) -> dict[str, Any]:
         "provincia": property_tab.get("provincia") or None,
         "distrito": property_tab.get("distrito") or None,
         "tipo_inmueble": properties[0].get("tipo_inmueble") if properties else None,
-        "fase": listing.get("fase") or None, "estado": listing.get("estado") or None,
+        "fase": listing.get("fase") or status["fase"], "estado": listing.get("estado") or status["estado"],
         "offer_date": offer_date, "offer_at": None,
         "precio_base": money(remate.get("precio_base") or listing.get("precio_base")),
+        "cronograma": schedule(detail),
         "detail_path": f"auctions/{auction['numero_remate']}.json",
     }
 

@@ -1,7 +1,7 @@
 import pytest
 
-from remaju.archive import read_json
-from remaju.publication import money, publish_run, validate_run
+from utils.archive import read_json
+from utils.publication import money, publish_run, validate_run
 
 
 def run(run_id="r1", mode="live"):

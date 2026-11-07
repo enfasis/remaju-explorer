@@ -1,7 +1,10 @@
 import pytest
 
-from remaju.collector import LIST_ID, LIST_PAGE
-from remaju.jsf import JsfSession, parse_partial_response
+from utils.extract import LIST_ID
+from utils.jsf import JsfSession, parse_partial_response
+from utils.site import click, list_page
+
+LIST_PAGE = list_page(0)
 
 
 def test_partial_response_extracts_updates_and_redirect():
@@ -71,3 +74,20 @@ def test_transport_failure_does_not_change_state():
     with pytest.raises(TimeoutError):
         session.perform(LIST_PAGE, fail)
     assert session.state == "original"
+
+
+def test_source_view_state_update_id_refreshes_state():
+    session = JsfSession({}, "first")
+    session.perform(LIST_PAGE, lambda action, payload: f'<partial-response><changes><update id="{LIST_ID}">list</update><update id="j_id1:javax.faces.ViewState:0"><![CDATA[second]]></update></changes></partial-response>')
+    assert session.state == "second"
+
+
+def test_navigation_click_accepts_redirect_and_sends_button():
+    session = JsfSession({"form": "form"}, "state")
+    sent = []
+    interaction = click("detail-click", "form:list:0:j_idt169")
+    session.perform(interaction, lambda action, payload: sent.append(payload) or '<partial-response><redirect url="/detail"/></partial-response>')
+    assert sent[0]["javax.faces.source"] == "form:list:0:j_idt169"
+    assert sent[0]["form:list:0:j_idt169"] == "form:list:0:j_idt169"
+    assert sent[0]["javax.faces.partial.execute"] == "@all"
+    assert "javax.faces.partial.render" not in sent[0]

@@ -1,6 +1,10 @@
-from dataclasses import dataclass
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from xml.etree import ElementTree
+
+from selectolax.parser import HTMLParser
+
+VIEW_STATE = "javax.faces.ViewState"
 
 
 @dataclass(frozen=True)
@@ -9,35 +13,44 @@ class PartialResponse:
     redirect: str | None
     error: str | None
 
+    @property
+    def state(self) -> str | None:
+        return next((value for key, value in self.updates.items() if VIEW_STATE in key), None)
+
 
 @dataclass(frozen=True)
 class AjaxInteraction:
     name: str
     source: str
     execute: str
-    render: str
-    event: str
+    render: str = ""
+    event: str = ""
     parameters: tuple[tuple[str, str], ...] = ()
+    navigates: bool = False
 
     def payload(self, fields: Mapping[str, str], state: str) -> dict[str, str]:
-        if not state or not all((self.name, self.source, self.execute, self.render, self.event)):
+        if not state or not all((self.name, self.source, self.execute)) or not (self.render or self.navigates):
             raise ValueError("Incomplete JSF interaction")
         payload = dict(fields)
         payload.update({
             "javax.faces.partial.ajax": "true",
             "javax.faces.source": self.source,
             "javax.faces.partial.execute": self.execute,
-            "javax.faces.partial.render": self.render,
-            "javax.faces.behavior.event": self.event,
-            "javax.faces.partial.event": self.event,
         })
+        if self.render:
+            payload["javax.faces.partial.render"] = self.render
+        if self.event:
+            payload["javax.faces.behavior.event"] = self.event
+            payload["javax.faces.partial.event"] = self.event
         payload.update(self.parameters)
-        payload["javax.faces.ViewState"] = state
+        payload[VIEW_STATE] = state
         return payload
 
     def response(self, xml: str) -> PartialResponse:
         result = parse_partial_response(xml)
-        if result.error or result.redirect is not None or self.render not in result.updates:
+        if result.error:
+            raise ValueError(f"Invalid {self.name} response")
+        if not self.navigates and (result.redirect is not None or not any(key in result.updates for key in self.render.split())):
             raise ValueError(f"Invalid {self.name} response")
         return result
 
@@ -50,12 +63,27 @@ class JsfSession:
     def perform(self, interaction: AjaxInteraction, send: Callable[[str, dict[str, str]], str]) -> tuple[str, PartialResponse]:
         xml = send(interaction.name, interaction.payload(self.fields, self.state))
         result = interaction.response(xml)
-        state = result.updates.get("javax.faces.ViewState")
+        state = result.state
         if state is not None:
             if not state:
                 raise ValueError("JSF ViewState missing")
             self.state = state
         return xml, result
+
+
+def form_session(html: str, form_id: str) -> JsfSession:
+    form = HTMLParser(html).css_first(f'form[id="{form_id}"]')
+    if form is None:
+        raise ValueError(f"Expected form {form_id} not found")
+    fields: dict[str, str] = {}
+    for node in form.css("input[name]"):
+        name = node.attributes.get("name") or ""
+        if name and (node.attributes.get("type") or "").lower() not in {"submit", "button", "image"}:
+            fields[name] = node.attributes.get("value") or ""
+    state = fields.get(VIEW_STATE)
+    if not state:
+        raise ValueError("JSF ViewState missing")
+    return JsfSession(fields, state)
 
 
 def parse_partial_response(xml: str) -> PartialResponse:

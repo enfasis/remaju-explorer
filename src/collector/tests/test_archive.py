@@ -2,10 +2,13 @@ import csv
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
-from remaju.archive import export_csv, reconcile
+from utils.archive import export_csv, reconcile
+
+MAIN = Path(__file__).parents[1] / "main.py"
 
 
 def auction(number: str, price: str = "100") -> dict:
@@ -47,6 +50,6 @@ def test_csv_escapes_formulas_and_preserves_unicode(tmp_path):
 def test_cli_import_never_overwrites_input(tmp_path):
     source = tmp_path / "auctions.json"
     source.write_text(json.dumps({"auctions": [auction("1")]}))
-    result = subprocess.run([sys.executable, "-m", "remaju", "import-legacy", "--input", str(source), "--output", str(source)], capture_output=True, text=True)
+    result = subprocess.run([sys.executable, str(MAIN), "import-legacy", "--input", str(source), "--output", str(source)], capture_output=True, text=True)
     assert result.returncode == 5
     assert json.loads(source.read_text())["auctions"][0]["numero_remate"] == "1"

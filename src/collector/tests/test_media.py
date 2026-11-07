@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from remaju.source_media import thumbnail_from_card
+from utils.media import thumbnail_from_card
 
 
 def test_thumbnail_is_bounded_and_does_not_fetch_remote_images(tmp_path: Path) -> None:

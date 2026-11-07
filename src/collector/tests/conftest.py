@@ -2,8 +2,6 @@ from pathlib import Path
 
 import pytest
 
-from remaju.parser import RemajuParser
-
 
 @pytest.fixture
 def sample_data_dir() -> Path:
@@ -11,8 +9,8 @@ def sample_data_dir() -> Path:
 
 
 @pytest.fixture
-def parser() -> RemajuParser:
-    return RemajuParser()
+def list_html(sample_data_dir: Path) -> str:
+    return (sample_data_dir / "list_page.html").read_text(encoding="utf-8")
 
 
 @pytest.fixture
