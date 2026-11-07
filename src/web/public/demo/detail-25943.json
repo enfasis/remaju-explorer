@@ -1,5 +1,14 @@
 {
   "numero_remate": "25943",
+  "ubicacion": {
+    "departamento": "ICA",
+    "provincia": "CHINCHA",
+    "distrito": null
+  },
+  "estado": {
+    "fase": "Publicación e Inscripcion",
+    "estado": "En proceso"
+  },
   "remate": {
     "expediente": "00070-2025-0-1408-JR-CI-01",
     "distrito_judicial": "ICA",
@@ -82,6 +91,5 @@
       }
     ]
   },
-  "documents": [],
   "source_url": "https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml"
 }

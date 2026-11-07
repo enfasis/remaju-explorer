@@ -14,12 +14,54 @@ export type Summary = {
   detail_path: string
   coordinates?: Coordinate[]
   thumbnail_path?: string | null
+  cronograma?: Phase[]
 }
 
 export type Coordinate = { latitude: number; longitude: number }
 export type Rate = { penToUsd: string; date: string; source: string }
 export type Property = { partida_registral: string; tipo_inmueble: string; direccion: string; carga_gravamen: string | null; porcentaje_a_remstar: string; imagenes: number; latitude?: number | null; longitude?: number | null; area_m2?: number | null }
-export type AuctionDetail = { numero_remate: string; remate: Record<string, string | number | null>; inmuebles: Property[]; cronograma: { nro: number; fase: string; fecha_inicio: string; fecha_fin: string }[]; seguimiento: { expediente: Record<string, string>; eventos: Record<string, string | null>[] } | null; documents: { label: string; url: string }[]; source_url: string }
+export type Money = Summary['precio_base']
+export type Phase = { nro: number; fase: string; fecha_inicio: string; fecha_fin: string }
+export type Location = { departamento: string | null; provincia: string | null; distrito: string | null }
+export type AuctionDetail = { numero_remate: string; ubicacion?: Location; estado?: { fase: string | null; estado: string | null }; remate: Record<string, string | number | null>; inmuebles: Property[]; cronograma: Phase[]; seguimiento: { expediente: Record<string, string>; eventos: Record<string, string | null>[] } | null; source_url: string }
+
+export function parseMoney(raw: string | number | null | undefined): Money {
+  if (raw === null || raw === undefined || raw === '') return null
+  const text = String(raw).trim()
+  const currency = /^S\/\.?/.test(text) ? 'PEN' : text.startsWith('$') ? 'USD' : null
+  const amount = text.replace(/^(S\/\.?|\$)\s*/, '').replace(/,/g, '')
+  return { raw: text, currency, amount: currency && /^\d+(\.\d+)?$/.test(amount) ? amount : null }
+}
+
+export function otherCurrency(currency: string): string {
+  return currency === 'USD' ? 'PEN' : 'USD'
+}
+
+export function titleCase(value: string | null | undefined): string {
+  return (value || '').toLocaleLowerCase('es').replace(/(^|[\s(-])(\p{L})/gu, (_, space: string, letter: string) => space + letter.toLocaleUpperCase('es'))
+}
+
+export function place(location: Partial<Location>): string {
+  return [location.distrito, location.provincia, location.departamento].filter((value, index, all) => value && all.indexOf(value) === index).map(titleCase).join(', ')
+}
+
+function limaTime(value: string): number {
+  return Date.parse(`${value.replace(' ', 'T')}-05:00`)
+}
+
+export function currentPhase(phases: Phase[], now = Date.now()): Phase | null {
+  return phases.find(phase => now <= limaTime(phase.fecha_fin)) ?? phases.at(-1) ?? null
+}
+
+export function phaseState(phase: Phase, current: Phase | null, now = Date.now()): 'done' | 'current' | 'upcoming' {
+  if (current && phase.nro === current.nro && now >= limaTime(phase.fecha_inicio)) return 'current'
+  return now > limaTime(phase.fecha_fin) ? 'done' : 'upcoming'
+}
+
+export function formatDateTime(value: string): string {
+  const time = limaTime(value)
+  return Number.isNaN(time) ? value : new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Lima' }).format(time)
+}
 
 export function convertedAmount(money: Summary['precio_base'], currency: string, rate: Rate | null): string | null {
   if (!money?.amount || !money.currency || !/^\d+(\.\d+)?$/.test(money.amount)) return null
@@ -90,4 +132,14 @@ export function orderAuctions(items: Summary[], order: string, currency?: string
     return (compareDecimal(left, right) ?? 0) * (order === 'price-desc' ? -1 : 1)
   })
   return sorted
+}
+
+export function formatShortDate(value: string): string {
+  const time = limaTime(value)
+  return Number.isNaN(time) ? value : new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short', timeZone: 'America/Lima' }).format(time).replace('.', '')
+}
+
+export function activePhase(summary: Pick<Summary, 'fase' | 'cronograma'>, now = Date.now()): { fase: string | null; until: string | null } {
+  const phase = currentPhase(summary.cronograma || [], now)
+  return phase ? { fase: phase.fase, until: phase.fecha_fin } : { fase: summary.fase, until: null }
 }

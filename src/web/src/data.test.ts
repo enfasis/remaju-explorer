@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareDecimal, convertedAmount, orderAuctions, siteUrl, sortAuctions, type Summary } from './data'
+import { compareDecimal, convertedAmount, currentPhase, orderAuctions, parseMoney, phaseState, place, siteUrl, sortAuctions, type Summary } from './data'
 
 describe('display conversion', () => {
   const rate = { penToUsd: '0.25', date: '2026-11-07', source: 'fixture' }
@@ -42,5 +42,29 @@ describe('date ordering', () => {
   it('sorts source dates descending and unknown dates last', () => {
     const auctions = [{ auction_id: 'remaju:3', offer_date: null }, { auction_id: 'remaju:1', offer_date: '2026-01-01' }, { auction_id: 'remaju:2', offer_date: '2026-02-01' }] as Summary[]
     expect(sortAuctions(auctions).map(a => a.auction_id)).toEqual(['remaju:2', 'remaju:1', 'remaju:3'])
+  })
+})
+
+describe('detail helpers', () => {
+  const phases = [
+    { nro: 1, fase: 'Publicación', fecha_inicio: '2026-11-07 00:00:00', fecha_fin: '2026-11-16 23:59:59' },
+    { nro: 2, fase: 'Ofertas', fecha_inicio: '2026-11-20 12:00:00', fecha_fin: '2026-11-21 11:59:59' },
+  ]
+  it('parses source money with currency', () => {
+    expect(parseMoney('S/. 1,163,355.99')).toEqual({ raw: 'S/. 1,163,355.99', currency: 'PEN', amount: '1163355.99' })
+    expect(parseMoney('$ 40,066.67')?.currency).toBe('USD')
+    expect(parseMoney('')).toBeNull()
+  })
+  it('formats locations without repeating names', () => {
+    expect(place({ distrito: null, provincia: 'CUSCO', departamento: 'CUSCO' })).toBe('Cusco')
+    expect(place({ distrito: 'CHINCHA ALTA', provincia: 'CHINCHA', departamento: 'ICA' })).toBe('Chincha Alta, Chincha, Ica')
+  })
+  it('finds the current phase in Lima time', () => {
+    const during = Date.parse('2026-11-10T12:00:00-05:00')
+    const gap = Date.parse('2026-11-18T12:00:00-05:00')
+    expect(currentPhase(phases, during)?.nro).toBe(1)
+    expect(phaseState(phases[0], currentPhase(phases, during), during)).toBe('current')
+    expect(phaseState(phases[1], currentPhase(phases, gap), gap)).toBe('upcoming')
+    expect(currentPhase(phases, Date.parse('2027-01-01T00:00:00-05:00'))?.nro).toBe(2)
   })
 })

@@ -1,4 +1,7 @@
-import { useRef } from 'react'
+import { useState } from 'react'
+import { Dialog } from 'tamagui'
+import IconButton from './icon-button'
+import { CloseIcon, HelpIcon } from './icons'
 
 const terms = [
   ['Precio base', 'Monto mínimo para iniciar las ofertas. Puede corresponder a varios inmuebles.'],
@@ -13,6 +16,22 @@ const terms = [
 ]
 
 export default function Glossary() {
-  const dialog = useRef<HTMLDialogElement>(null)
-  return <><button className="icon-button" type="button" aria-label="Abrir glosario" onClick={() => dialog.current?.showModal()}>?</button><dialog ref={dialog} aria-labelledby="glossary-title"><div className="section-heading"><h2 id="glossary-title">Guía rápida</h2><button className="icon-button" type="button" aria-label="Cerrar glosario" onClick={() => dialog.current?.close()}>×</button></div><dl>{terms.map(([term, description]) => <div key={term}><dt>{term}</dt><dd>{description}</dd></div>)}</dl><p className="muted">Guía orientativa para Perú. No reemplaza las bases del remate ni la asesoría legal.</p><a href="https://remaju.pj.gob.pe/doc/remaju_manual_postor.pdf" target="_blank" rel="noreferrer">Manual oficial para postores</a></dialog></>
+  const [open, setOpen] = useState(false)
+  return <Dialog modal open={open} onOpenChange={setOpen}>
+    <IconButton label="Abrir glosario" icon={<HelpIcon />} haspopup="dialog" onPress={() => setOpen(true)} />
+    <Dialog.Portal>
+      <Dialog.Overlay key="overlay" className="dialog-overlay" bg="rgba(28, 24, 20, 0.42)" opacity="1 enter:0 exit:0" transition="quick" />
+      <Dialog.Content key="content" className="dialog-content" bg="transparent" borderWidth={0} p="0" boxShadow="none" opacity="1 enter:0 exit:0" y="0 enter:12px exit:8px" scale="1 enter:0.98 exit:0.98" transition="quick">
+        <div className="dialog-panel">
+          <div className="dialog-heading">
+            <Dialog.Title className="dialog-title">Guía rápida</Dialog.Title>
+            <IconButton label="Cerrar glosario" icon={<CloseIcon />} onPress={() => setOpen(false)} />
+          </div>
+          <Dialog.Description className="muted">Términos frecuentes en los remates judiciales del Perú. No reemplaza las bases del remate ni la asesoría legal.</Dialog.Description>
+          <dl className="glossary">{terms.map(([term, description]) => <div key={term}><dt>{term}</dt><dd>{description}</dd></div>)}</dl>
+          <a href="https://remaju.pj.gob.pe/doc/remaju_manual_postor.pdf" target="_blank" rel="noreferrer">Manual oficial para postores<span className="sr-only"> (abre en otra pestaña)</span></a>
+        </div>
+      </Dialog.Content>
+    </Dialog.Portal>
+  </Dialog>
 }

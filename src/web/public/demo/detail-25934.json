@@ -1,5 +1,14 @@
 {
   "numero_remate": "25934",
+  "ubicacion": {
+    "departamento": "AREQUIPA",
+    "provincia": "LA UNION",
+    "distrito": null
+  },
+  "estado": {
+    "fase": "Publicación e Inscripcion",
+    "estado": "En proceso"
+  },
   "remate": {
     "expediente": "00681-2024-0-0401-JR-CI-05",
     "distrito_judicial": "AREQUIPA",
@@ -82,6 +91,5 @@
       }
     ]
   },
-  "documents": [],
   "source_url": "https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml"
 }
