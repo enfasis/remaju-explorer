@@ -12,7 +12,7 @@ build:
 
 test-container:
 	docker compose build collector
-	docker run --rm --network none remaju-collector:dev pytest -q
+	docker run --rm --network none remaju-collector:dev pytest -q src/collector/tests
 
 download:
 	docker compose run --rm collector python -m remaju collect --mode sample
@@ -29,13 +29,13 @@ web-build:
 
 test:
 	docker compose build
-	docker run --rm --network none remaju-collector:dev pytest -q
+	docker run --rm --network none remaju-collector:dev pytest -q src/collector/tests
 	docker run --rm --network none remaju-web:dev npm run test
 	docker run --rm --network none remaju-web:dev npm run build
 
 browser-test:
 	docker compose up -d web
-	docker compose run --rm -e EXPLORER_URL=http://web:5173/ collector sh -c 'playwright install --with-deps chromium && python tests/browser_smoke.py'
+	docker compose run --rm -e EXPLORER_URL=http://web:5173/ collector sh -c 'playwright install --with-deps chromium && python src/collector/tests/browser_smoke.py'
 
 install:
 	docker compose build

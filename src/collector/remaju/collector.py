@@ -9,12 +9,20 @@ import requests
 from selectolax.parser import HTMLParser
 
 from .archive import utc_now, write_json
-from .jsf import parse_partial_response
+from .jsf import AjaxInteraction, JsfSession
 from .parser import RemajuParser
 
 
 LIST_URL = "https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml"
 LIST_ID = "formBuscarRemateExterno:listaRemate"
+LIST_PAGE = AjaxInteraction(
+    name="list-page",
+    source=LIST_ID,
+    execute=LIST_ID,
+    render=LIST_ID,
+    event="page",
+    parameters=((f"{LIST_ID}_pagination", "true"), (f"{LIST_ID}_first", "0"), (f"{LIST_ID}_rows", "4")),
+)
 
 
 def redact(text: str) -> str:
@@ -85,11 +93,8 @@ def collect_sample(output: Path) -> dict[str, Any]:
         with requests.Session() as session:
             html = trace.request(session, "GET", LIST_URL, "list-init")
             state, fields = initial_state(html)
-            fields.update({"javax.faces.partial.ajax": "true", "javax.faces.source": LIST_ID, "javax.faces.partial.execute": LIST_ID, "javax.faces.partial.render": LIST_ID, "javax.faces.behavior.event": "page", "javax.faces.partial.event": "page", f"{LIST_ID}_pagination": "true", f"{LIST_ID}_first": "0", f"{LIST_ID}_rows": "4", "javax.faces.ViewState": state})
-            xml = trace.request(session, "POST", LIST_URL, "list-page", fields)
-            partial = parse_partial_response(xml)
-            if partial.error or LIST_ID not in partial.updates:
-                raise ValueError("Invalid listing response")
+            jsf = JsfSession(fields, state)
+            xml, _ = jsf.perform(LIST_PAGE, lambda action, data: trace.request(session, "POST", LIST_URL, action, data))
             parser = RemajuParser()
             cards = parser.extract_card_info(xml)
             if not cards:

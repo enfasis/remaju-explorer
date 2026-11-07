@@ -3,16 +3,16 @@ services:
     image: remaju-collector:dev
     build:
       context: .
-      dockerfile: docker/collector.Dockerfile
+      dockerfile: src/collector/Dockerfile
     volumes:
       - ./var:/app/var
     environment:
-      PYTHONPATH: /app/src
+      PYTHONPATH: /app/src/collector
   web:
     image: remaju-web:dev
     build:
       context: .
-      dockerfile: docker/web.Dockerfile
+      dockerfile: src/web/Dockerfile
     ports:
       - "5173:5173"
     command: npm run dev

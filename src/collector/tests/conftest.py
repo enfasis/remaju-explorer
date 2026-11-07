@@ -7,7 +7,7 @@ from remaju.parser import RemajuParser
 
 @pytest.fixture
 def sample_data_dir() -> Path:
-    return Path(__file__).parent.parent / "test_data"
+    return Path(__file__).parent / "test_data"
 
 
 @pytest.fixture

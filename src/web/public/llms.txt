@@ -1,4 +1,4 @@
-# RemaJu Explorer
+# remaju^mm
 
 Independent static explorer of Peruvian judicial auctions. The demo contains an incomplete sample extracted on 2026-11-07; it is not a current or complete availability dataset.
 
