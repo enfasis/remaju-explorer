@@ -77,14 +77,15 @@ def tracking_page(html: str) -> bool:
 
 
 def polite_pause() -> None:
-    time.sleep(1 + random.uniform(0, 1))
+    time.sleep(0.5 + random.uniform(0, 0.5))
 
 
 class RemajuSite:
-    def __init__(self, trace: Trace, session: requests.Session, pause: Callable[[], None] = polite_pause):
+    def __init__(self, trace: Trace, session: requests.Session, pause: Callable[[], None] = polite_pause, rows: int = ROWS):
         self.trace = trace
         self.session = session
         self.pause = pause
+        self.rows = rows
         self.listing: dict[str, str] = {}
         self.view = JsfSession({}, "")
         self.exit: tuple[str, AjaxInteraction] | None = None
@@ -97,7 +98,7 @@ class RemajuSite:
         self.total = advertised_total(html) or self.total
 
     def list_page(self, first: int) -> str:
-        return self.post(LIST_URL, list_page(first))
+        return self.post(LIST_URL, list_page(first, self.rows))
 
     def open_detail(self, card: Card) -> str:
         self.post(LIST_URL, click("detail-click", card.detail_id))

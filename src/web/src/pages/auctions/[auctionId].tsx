@@ -62,7 +62,7 @@ export default function AuctionDetail() {
     loadSnapshot().then(snapshot => {
       const item = snapshot.auctions.find(a => a.auction_id === auctionId)
       if (!item) throw new Error('Remate no disponible.')
-      return loadDetail(item.detail_path)
+      return item.detail ?? loadDetail(item.detail_path ?? item.auction_id)
     }).then(value => { if (active) setDetail(value) }).catch((e: Error) => { if (active) setError(e.message) })
     return () => { active = false }
   }, [auctionId])

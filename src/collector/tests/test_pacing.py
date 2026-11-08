@@ -3,14 +3,14 @@ from unittest.mock import Mock
 from utils.site import RemajuSite, list_page, polite_pause
 
 
-def test_pause_is_one_second_plus_jitter(monkeypatch):
+def test_pause_is_half_second_plus_jitter(monkeypatch):
     sleep = Mock()
-    jitter = Mock(return_value=0.75)
+    jitter = Mock(return_value=0.25)
     monkeypatch.setattr("utils.site.time.sleep", sleep)
     monkeypatch.setattr("utils.site.random.uniform", jitter)
     polite_pause()
-    jitter.assert_called_once_with(0, 1)
-    sleep.assert_called_once_with(1.75)
+    jitter.assert_called_once_with(0, 0.5)
+    sleep.assert_called_once_with(0.75)
 
 
 def test_get_and_post_both_pause_before_request():

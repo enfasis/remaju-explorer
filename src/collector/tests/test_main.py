@@ -39,7 +39,7 @@ def test_partial_publication_requires_acknowledgement(capsys, tmp_path):
     code, _, err = invoke(capsys, "publish", "--run-file", str(run), "--target", str(tmp_path / "site"))
     assert code == 5
     assert "Only complete all-phase live runs" in json.loads(err)["error"]["message"]
-    assert not (tmp_path / "site/data").exists()
+    assert not (tmp_path / "site/manifest.json").exists()
 
 
 def test_process_consolidates_without_external_services(capsys, tmp_path):

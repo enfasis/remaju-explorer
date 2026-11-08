@@ -2,21 +2,18 @@ import { useEffect, useState, type CSSProperties, type ReactElement } from 'reac
 import { Button } from 'tamagui'
 import { loadManifest, loadSnapshot } from '../cache'
 import { DownloadIcon, FileIcon } from '../components/icons'
-import { dataPath, dataUrl, partialData, siteUrl, type Manifest, type Snapshot } from '../data'
+import { availableReference, dataPath, dataUrl, partialData, siteUrl, type Manifest, type Snapshot } from '../data'
 import { useTitle } from '../use-title'
 
 type Resource = { title: string; format: string; description: string; href: string; action: string; download?: boolean; icon: ReactElement }
 
 function resources(manifest: Manifest, snapshot: Snapshot | null): Resource[] {
   const count = snapshot ? `${snapshot.auctions.length} remates` : 'todos los remates'
-  const example = snapshot?.auctions[0]?.detail_path
-  const release = manifest.availability.path.replace(/[^/]+$/, '')
   return [
-    { title: 'Listado de remates', format: 'JSON', description: `Un resumen por remate (${count}): número, ubicación, tipo de inmueble, fase, estado, precio base y cronograma. Es el mismo archivo que usa el buscador.`, href: dataUrl(manifest.availability.path), action: 'Descargar listado', download: true, icon: <DownloadIcon /> },
-    ...(manifest.demo ? [] : [{ title: 'Listado para hojas de cálculo', format: 'CSV', description: 'Los remates disponibles en columnas, listo para Excel, Google Sheets o LibreOffice.', href: dataUrl(`${release}available.csv`), action: 'Descargar CSV', download: true, icon: <DownloadIcon /> }]),
-    ...(example ? [{ title: 'Detalle de cada remate', format: 'JSON', description: 'Un archivo por remate con montos, inmuebles, cargas y gravámenes, cronograma y seguimiento judicial. Cada resumen del listado indica su ruta en el campo detail_path.', href: dataUrl(example), action: 'Ver un ejemplo', icon: <FileIcon /> }] : []),
+    { title: 'Remates disponibles', format: 'JSON', description: `Datos completos de ${count}: montos, inmuebles, cronograma y seguimiento. Se actualiza diariamente e incluye remates con fecha de cierre de fase 3 aún vigente.`, href: dataUrl(availableReference(manifest).path), action: 'Descargar listado', download: true, icon: <DownloadIcon /> },
+    ...(manifest.history && manifest.schema_version === 2 ? [{ title: 'Archivo histórico', format: 'JSON', description: 'Último contenido conocido de cada remate, con sus detalles, fecha de primera y última observación y presencia en el último recorrido completo. No es un índice de publicaciones.', href: dataUrl(manifest.history.path), action: 'Descargar historial', download: true, icon: <DownloadIcon /> }] : []),
+    ...(manifest.ids ? [{ title: 'Números de remate', format: 'TXT', description: 'Un código por línea, en el orden del último recorrido completo. Se usa para comparar colecciones.', href: dataUrl(manifest.ids.path), action: 'Descargar códigos', download: true, icon: <DownloadIcon /> }] : []),
     { title: 'Manifiesto', format: 'JSON', description: 'Punto de entrada para automatizar descargas: indica la versión vigente, la fecha de generación y la ruta de cada archivo.', href: dataUrl(dataPath), action: 'Ver manifiesto', icon: <FileIcon /> },
-    ...(manifest.archive ? [{ title: 'Archivo histórico', format: 'JSON', description: 'Índice de publicaciones anteriores y de los cambios observados entre ellas.', href: dataUrl(manifest.archive.path), action: 'Ver archivo', icon: <FileIcon /> }] : []),
     { title: 'Guía de acceso a los datos', format: 'Markdown', description: 'Descripción de los campos, reglas de uso y advertencias para analistas y agentes de IA.', href: siteUrl('data-access.md'), action: 'Leer guía', icon: <FileIcon /> },
   ]
 }

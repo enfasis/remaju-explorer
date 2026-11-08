@@ -1,3 +1,5 @@
+import { inPeru } from './geography'
+
 export type Summary = {
   auction_id: string
   numero_remate: string
@@ -11,10 +13,11 @@ export type Summary = {
   offer_date: string | null
   offer_at: string | null
   precio_base: { amount: string | null; currency: string | null; raw: string | null } | null
-  detail_path: string
+  detail_path?: string
   coordinates?: Coordinate[]
   thumbnail_path?: string | null
   cronograma?: Phase[]
+  detail?: AuctionDetail
 }
 
 export type Coordinate = { latitude: number; longitude: number }
@@ -85,12 +88,16 @@ export function displayMoney(money: Summary['precio_base'], currency: string, ra
   return `${money?.currency !== currency ? '≈ ' : ''}${currency === 'PEN' ? 'S/' : 'US$'} ${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction.padEnd(2, '0').slice(0, 2)}`
 }
 
-export type Manifest = { schema_version: number; generated_at: string; dataset_version: string; scope?: string; availability: { path: string }; archive?: { path: string }; demo?: boolean }
-export type Snapshot = { auctions: Summary[] }
+export type FileReference = { path: string; sha256?: string }
+export type Manifest = { schema_version: number; generated_at: string; dataset_version: string; scope?: string; available?: FileReference; availability?: FileReference; history?: FileReference; ids?: FileReference; demo?: boolean }
+export type Snapshot = { dataset_version?: string; auctions: Summary[] }
+export type HistoricalAuction = { numero_remate: string; list_data: { fase?: string; estado?: string; descripcion?: string; fecha_presentacion?: string; precio_base?: string }; detail: { remate_tab: AuctionDetail['remate']; inmuebles_tab: Location & { inmuebles: Property[] }; cronograma_tab: { fases: Phase[] } }; seguimiento: AuctionDetail['seguimiento'] }
+export type FullSnapshot = { dataset_version: string; auctions: HistoricalAuction[] }
+export type History = { dataset_version: string; records: Record<string, { document: HistoricalAuction; present: boolean }> }
 
 const demo = import.meta.env.DEV || import.meta.env.VITE_DEMO === 'true'
 
-export const dataPath = demo ? 'demo/manifest.json' : 'data/manifest.json'
+export const dataPath = demo ? 'demo/manifest.json' : 'manifest.json'
 
 export function siteUrl(path: string): string {
   return `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
@@ -105,10 +112,47 @@ export function partialData(manifest: Manifest): boolean {
   return Boolean(manifest.demo) || manifest.scope === 'partial'
 }
 
-export async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(dataUrl(path))
+export class HttpError extends Error {
+  constructor(public status: number) { super('No se pudieron cargar los datos.') }
+}
+
+export async function fetchJson<T>(path: string, sha256?: string, fresh = false): Promise<T> {
+  const response = await fetch(dataUrl(path), { cache: fresh ? 'no-store' : 'default' })
+  if (!response.ok) throw new HttpError(response.status)
   if (!response.ok || !response.headers.get('content-type')?.includes('json')) throw new Error('No se pudieron cargar los datos.')
-  return response.json() as Promise<T>
+  const bytes = await response.arrayBuffer()
+  if (sha256) {
+    const digest = await crypto.subtle.digest('SHA-256', bytes)
+    const actual = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+    if (actual !== sha256) throw new Error('La publicación se está actualizando. Inténtalo nuevamente.')
+  }
+  return JSON.parse(new TextDecoder().decode(bytes)) as T
+}
+
+export function availableReference(manifest: Manifest): FileReference {
+  const reference = manifest.available ?? manifest.availability
+  if (!reference) throw new Error('Publicación sin listado disponible.')
+  return reference
+}
+
+export function cleanDetail(detail: AuctionDetail): AuctionDetail {
+  return { ...detail, inmuebles: detail.inmuebles.map(item => inPeru(item.latitude, item.longitude) ? item : { ...item, latitude: null, longitude: null }) }
+}
+
+export function historyDetail(auction: HistoricalAuction): AuctionDetail {
+  const latest = auction.seguimiento?.eventos.at(-1)
+  const property = auction.detail.inmuebles_tab
+  return cleanDetail({ numero_remate: auction.numero_remate, ubicacion: property, estado: { fase: latest?.fase_convocatoria ?? auction.list_data.fase ?? null, estado: latest?.estado_convocatoria ?? auction.list_data.estado ?? null }, remate: auction.detail.remate_tab, inmuebles: property.inmuebles, cronograma: auction.detail.cronograma_tab.fases, seguimiento: auction.seguimiento, source_url: 'https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml' })
+}
+
+export function cleanSnapshot(snapshot: Snapshot): Snapshot {
+  return { ...snapshot, auctions: snapshot.auctions.map(item => ({ ...item, coordinates: item.coordinates?.filter(point => inPeru(point.latitude, point.longitude)) })) }
+}
+
+export function summaryFromAuction(auction: HistoricalAuction): Summary {
+  const detail = historyDetail(auction)
+  const property = auction.detail.inmuebles_tab
+  return { auction_id: `remaju:${auction.numero_remate}`, numero_remate: auction.numero_remate, descripcion: String(detail.remate.descripcion ?? auction.list_data.descripcion ?? '') || null, departamento: property.departamento, provincia: property.provincia, distrito: property.distrito, tipo_inmueble: property.inmuebles[0]?.tipo_inmueble ?? null, fase: auction.list_data.fase ?? detail.estado?.fase ?? null, estado: auction.list_data.estado ?? detail.estado?.estado ?? null, offer_date: auction.list_data.fecha_presentacion ?? null, offer_at: null, precio_base: parseMoney(detail.remate.precio_base ?? auction.list_data.precio_base), coordinates: detail.inmuebles.filter(item => inPeru(item.latitude, item.longitude)).map(item => ({ latitude: item.latitude!, longitude: item.longitude! })), cronograma: detail.cronograma, detail }
 }
 
 export function sortAuctions(items: Summary[]): Summary[] {

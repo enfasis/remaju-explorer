@@ -59,10 +59,15 @@ class Collect(Action):
     mode: Literal["sample", "live"] = arg("sample", help="sample walks one listing page; live walks every page")
     output: Path = arg(Path("var/private/runs"), help="Directory for run caches and traces")
     max_pages: int | None = arg(None, help="Stop a live run after this many listing pages; the run stays partial")
+    page_size: int = arg(12, help="Auctions per listing page: 4 or 12")
+    cache_dir: Path | None = arg(None, help="Persistent collector cache and ordered ids.txt")
+    cache_max_age_hours: int = arg(168, help="Refresh unchanged details after this many hours; 0 forces fresh details")
+    baseline_dir: Path | None = arg(None, help="Restore the baseline from verified manifest.json, ids.txt and history.json")
+    stop_window: int | None = arg(None, help="Experimental: stop at this many unchanged consecutive historical IDs; output cannot be published")
 
     @override
     def execute(self) -> Any:
-        result = collect(self.output, self.mode, max_pages=self.max_pages)
+        result = collect(self.output, self.mode, max_pages=self.max_pages, page_size=self.page_size, cache_dir=self.cache_dir, cache_max_age_hours=self.cache_max_age_hours, stop_window=self.stop_window, baseline_dir=self.baseline_dir)
         if result["status"] == "failed":
             raise CommandFailed(result, 4)
         return result

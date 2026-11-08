@@ -4,4 +4,5 @@ COPY src/web/package*.json ./
 COPY src/web/.npmrc ./
 RUN npm ci --no-audit --no-fund
 COPY src/web/ ./
+COPY src/shared/ /shared/
 CMD ["npm", "run", "build"]

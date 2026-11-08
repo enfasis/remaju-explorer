@@ -6,6 +6,7 @@ from models import Auction
 from utils.archive import read_json, write_json
 from utils.exchange import ExchangeRateClient, convert
 from utils.geocode import GeocodingClient
+from utils.geography import in_peru
 from utils.publication import publish_run
 
 
@@ -29,15 +30,16 @@ class Processing:
         return [Auction.model_validate(item) for item in read_json(self.run_dir / "auctions.json")]
 
     def geocode(self, auctions: list[Auction]) -> None:
-        if self.geocoder is None:
-            return
         for auction in auctions:
             tab = auction.detail.inmuebles_tab
             for item in tab.inmuebles:
-                if item.latitude is not None and item.longitude is not None:
+                if in_peru(item.latitude, item.longitude):
+                    continue
+                item.latitude, item.longitude = None, None
+                if self.geocoder is None:
                     continue
                 location = self.geocoder.locate(item.direccion, tab.distrito, tab.provincia, tab.departamento)
-                if location:
+                if location and in_peru(*location):
                     item.latitude, item.longitude = location
 
     def exchange(self, auctions: list[Auction]) -> None:

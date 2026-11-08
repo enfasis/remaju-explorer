@@ -7,14 +7,14 @@ import type { MapFocus, MapPoint } from '../components/auction-map'
 import FilterSelect, { choices } from '../components/filter-select'
 import IconButton from '../components/icon-button'
 import { ClearFiltersIcon } from '../components/icons'
-import { compareDecimal, convertedAmount, orderAuctions, type Manifest, type Rate, type Summary } from '../data'
+import { orderAuctions, type Manifest, type Summary } from '../data'
+import { facetOptions, matches, type Facet, type Filters } from '../filters'
 import { useRate } from '../use-rate'
 import { useTitle } from '../use-title'
 
 const AuctionMap = lazy(() => import('../components/auction-map'))
 
 const parsers = { q: parseAsString.withDefault(''), department: parseAsString.withDefault(''), province: parseAsString.withDefault(''), district: parseAsString.withDefault(''), propertyType: parseAsString.withDefault(''), phase: parseAsString.withDefault(''), currency: parseAsString.withDefault('PEN'), minPrice: parseAsString.withDefault(''), maxPrice: parseAsString.withDefault(''), from: parseAsString.withDefault(''), to: parseAsString.withDefault(''), mapped: parseAsString.withDefault(''), sort: parseAsString.withDefault('date-desc') }
-type Filters = { [K in keyof typeof parsers]: string }
 
 const sorts = [
   { value: 'date-desc', label: 'Fecha: reciente primero' },
@@ -22,23 +22,6 @@ const sorts = [
   { value: 'price-asc', label: 'Precio: menor primero' },
   { value: 'price-desc', label: 'Precio: mayor primero' },
 ]
-
-function matches(a: Summary, f: Filters, rate: Rate | null): boolean {
-  const text = [a.numero_remate, a.descripcion, a.departamento, a.provincia, a.distrito].join(' ').toLocaleLowerCase('es')
-  if (f.mapped && !a.coordinates?.length) return false
-  if (f.q && !text.includes(f.q.toLocaleLowerCase('es'))) return false
-  for (const [filter, value] of [[f.department, a.departamento], [f.province, a.provincia], [f.district, a.distrito], [f.propertyType, a.tipo_inmueble], [f.phase, a.fase]]) if (filter && filter !== value) return false
-  const date = a.offer_date ?? a.offer_at?.slice(0, 10)
-  if ((f.from || f.to) && (!date || (f.from && date < f.from) || (f.to && date > f.to))) return false
-  if (f.minPrice || f.maxPrice) {
-    const amount = convertedAmount(a.precio_base, f.currency, rate)
-    if (!f.currency || !amount) return false
-    const min = f.minPrice ? compareDecimal(amount, f.minPrice) : 0
-    const max = f.maxPrice ? compareDecimal(amount, f.maxPrice) : 0
-    if (min === null || max === null || min < 0 || max > 0) return false
-  }
-  return true
-}
 
 function DateField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   const [focused, setFocused] = useState(false)
@@ -68,7 +51,7 @@ export default function Home() {
   const results = useMemo(() => orderAuctions(auctions.filter(a => matches(a, filters, rate)), filters.sort, filters.currency, rate), [auctions, filters, rate])
   const points = useMemo<MapPoint[]>(() => results.flatMap(a => (a.coordinates || []).map((p, index) => ({ ...p, id: index ? `${a.auction_id}:${index}` : a.auction_id, label: `Remate ${a.numero_remate}`, path: `auctions/${encodeURIComponent(a.auction_id)}${location.search}` }))), [results, filters])
   const locate = (auction: Summary) => { setShowMap(true); setFocus({ id: auction.auction_id, at: Date.now() }) }
-  const options = (key: keyof Summary) => [...new Set(auctions.map(a => a[key]).filter((value): value is string => typeof value === 'string' && value.length > 0))].sort()
+  const options = (key: Facet) => facetOptions(auctions, filters, rate, key)
   const update = (key: keyof Filters, value: string) => void setFilters({ [key]: value || null, ...(key === 'department' ? { province: null, district: null } : key === 'province' ? { district: null } : {}) }, { history: 'push' })
   const type = (key: keyof Filters, value: string) => void setFilters({ [key]: value || null }, { history: 'replace' })
   const clear = () => void setFilters(Object.fromEntries(Object.keys(parsers).map(k => [k, null])), { history: 'push' })
@@ -79,11 +62,11 @@ export default function Home() {
     <section className="filters glass" aria-label="Filtros de remates">
       <form className="filter-grid" role="search" aria-controls="auction-list" onSubmit={event => event.preventDefault()}>
         <Input size="sm" className="field search" type="search" placeholder="Buscar por número, ubicación o descripción" aria-label="Buscar remates" value={filters.q} onChangeText={value => type('q', value)} />
-        {select('Departamento', 'department', options('departamento'))}
-        {select('Provincia', 'province', options('provincia'))}
-        {select('Distrito', 'district', options('distrito'))}
-        {select('Tipo de inmueble', 'propertyType', options('tipo_inmueble'))}
-        {select('Fase', 'phase', options('fase'))}
+        {select('Departamento', 'department', options('department'))}
+        {select('Provincia', 'province', options('province'))}
+        {select('Distrito', 'district', options('district'))}
+        {select('Tipo de inmueble', 'propertyType', options('propertyType'))}
+        {select('Fase', 'phase', options('phase'))}
         <Input size="sm" className="field" inputMode="decimal" placeholder={`Precio mínimo (${filters.currency})`} aria-label={`Precio mínimo en ${filters.currency}`} value={filters.minPrice} onChangeText={value => type('minPrice', value)} />
         <Input size="sm" className="field" inputMode="decimal" placeholder={`Precio máximo (${filters.currency})`} aria-label={`Precio máximo en ${filters.currency}`} value={filters.maxPrice} onChangeText={value => type('maxPrice', value)} />
         <DateField label="Ofertas desde" value={filters.from} onChange={value => type('from', value)} />

@@ -50,11 +50,22 @@ def test_processing_without_services_leaves_auctions_untouched(run_dir):
     assert run["auctions"] == read_json(run_dir / "auctions.json")
 
 
+def test_processing_clears_foreign_coordinates_without_a_paid_request(run_dir):
+    auctions = read_json(run_dir / "auctions.json")
+    item = auctions[0]["detail"]["inmuebles_tab"]["inmuebles"][0]
+    item["latitude"], item["longitude"] = 40, 70
+    write_json(run_dir / "auctions.json", auctions)
+    run = Processing(run_dir).process()
+    item = run["auctions"][0]["detail"]["inmuebles_tab"]["inmuebles"][0]
+    assert item["latitude"] is None
+    assert item["longitude"] is None
+
+
 def test_processing_publishes_consolidated_run(run_dir, tmp_path_factory):
     target = tmp_path_factory.mktemp("site")
     manifest = Processing(run_dir, target=target).process()
     assert manifest["run_id"] == "r1"
-    assert (target / "data/manifest.json").exists()
+    assert (target / "manifest.json").exists()
 
 
 def test_exchange_rate_falls_back_to_recent_cache(tmp_path):

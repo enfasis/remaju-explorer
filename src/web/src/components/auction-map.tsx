@@ -3,6 +3,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { siteUrl, type Coordinate } from '../data'
 import { chavin } from '../theme'
+import { inPeru } from '../geography'
 
 export type MapPoint = Coordinate & { id: string; label: string; path?: string }
 export type MapFocus = { id: string; at: number }
@@ -10,7 +11,7 @@ export type MapFocus = { id: string; at: number }
 const locateIcon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>'
 
 function valid(point: MapPoint): boolean {
-  return Number.isFinite(point.latitude) && Number.isFinite(point.longitude) && Math.abs(point.latitude) <= 90 && Math.abs(point.longitude) <= 180
+  return inPeru(point.latitude, point.longitude)
 }
 
 function locateControl(onLocate: () => void): L.Control {

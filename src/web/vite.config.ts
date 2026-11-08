@@ -13,7 +13,7 @@ const shared = [
 
 export default defineConfig({
   base: process.env.VITE_BASE_PATH || '/',
-  server: { allowedHosts: ['web'] },
+  server: { allowedHosts: ['web'], fs: { allow: [fileURLToPath(new URL('.', import.meta.url)), fileURLToPath(new URL('../shared', import.meta.url))] } },
   define: { 'process.env': '{}' },
   resolve: { alias: shared },
   optimizeDeps: {

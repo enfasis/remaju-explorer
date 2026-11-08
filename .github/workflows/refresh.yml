@@ -5,9 +5,17 @@ on:
   workflow_dispatch:
     inputs:
       max_pages:
-        description: Listing pages to collect (4 auctions each). Empty collects everything.
+        description: Listing pages to collect (12 auctions each). Empty collects everything; capped runs do not publish.
         default: ''
         required: false
+      stop_window:
+        description: Experimental consecutive historical match size (e.g. 4). Early stops do not publish.
+        default: ''
+        required: false
+      refresh_all_details:
+        description: Ignore cached details and refresh every auction.
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -21,6 +29,8 @@ jobs:
     environment: production
     env:
       MAX_PAGES: ${{ inputs.max_pages }}
+      STOP_WINDOW: ${{ inputs.stop_window }}
+      CACHE_MAX_AGE_HOURS: ${{ inputs.refresh_all_details && '0' || '168' }}
       AWS_ACCESS_KEY_ID: ${{ vars.R2_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: auto
@@ -50,29 +60,51 @@ jobs:
         run: |
           mkdir -p "$SITE/data" "$(dirname "$GEOCODING_CACHE")"
           aws s3 cp "$PRIVATE/cache/" "$(dirname "$GEOCODING_CACHE")/" --recursive
-          if aws s3 cp "$DATA/data/manifest.json" "$SITE/data/manifest.json"; then
+          if aws s3 cp "$DATA/manifest.json" "$SITE/manifest.json" 2>manifest-error.txt; then
+            test "$(jq -r '.schema_version' "$SITE/manifest.json")" = 2
+            test "$(jq -r '.history.path' "$SITE/manifest.json")" = history.json
+            test "$(jq -r '.ids.path' "$SITE/manifest.json")" = ids.txt
+            aws s3 cp "$DATA/history.json" "$SITE/history.json"
+            aws s3 cp "$DATA/ids.txt" "$SITE/ids.txt"
+          elif ! grep -Eq '404|NoSuchKey' manifest-error.txt; then
+            cat manifest-error.txt >&2
+            exit 1
+          elif aws s3 cp "$DATA/data/manifest.json" "$SITE/data/manifest.json" 2>manifest-error.txt; then
             state=$(jq -r '.state.path' "$SITE/data/manifest.json")
+            [[ "$state" =~ ^/data/releases/[A-Za-z0-9_-]+/state.json$ ]]
             aws s3 cp "$DATA$state" "$SITE$state"
+          elif ! grep -Eq '404|NoSuchKey' manifest-error.txt; then
+            cat manifest-error.txt >&2
+            exit 1
           fi
       - name: Collect from REMAJU
         id: collect
         run: |
           set +e
-          uv run python main.py collect --mode live --output "$RUNS" ${MAX_PAGES:+--max-pages "$MAX_PAGES"} | tee report.json
+          uv run python main.py collect --mode live --output "$RUNS" --page-size 12 --cache-dir "$(dirname "$GEOCODING_CACHE")/collector" --baseline-dir "$SITE" --cache-max-age-hours "$CACHE_MAX_AGE_HOURS" ${MAX_PAGES:+--max-pages "$MAX_PAGES"} ${STOP_WINDOW:+--stop-window "$STOP_WINDOW"} | tee report.json
           code=${PIPESTATUS[0]}
-          echo "run_id=$(jq -r '.run_id' report.json)" >> "$GITHUB_OUTPUT"
-          jq '{status, scope, count, advertised_total, pages_complete, details_complete, failures: (.failures | length), error}' report.json
+          run_id=$(jq -er '.run_id | select(type == "string" and test("^[A-Za-z0-9_-]{1,80}$"))' report.json) || exit 4
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "publish=$(jq -r '.status == "complete"' report.json)" >> "$GITHUB_OUTPUT"
+          jq '{status, scope, count, advertised_total, page_size, details_fetched, details_reused, stop_reason, matched_window, pages_complete, details_complete, failures: (.failures | length), error}' report.json
+          if [ "$code" -eq 0 ] && [ -z "$MAX_PAGES$STOP_WINDOW" ] && [ "$(jq -r '.status' report.json)" != complete ]; then
+            exit 4
+          fi
           exit "$code"
       - name: Geocode, convert and publish
+        if: ${{ steps.collect.outputs.publish == 'true' }}
         env:
           GEOCODING_API_KEY: ${{ secrets.GEOCODING_API_KEY }}
-        run: uv run python main.py process --run-dir "$RUNS/${{ steps.collect.outputs.run_id }}" --geocode --exchange --target "$SITE" ${MAX_PAGES:+--allow-partial}
-      - name: Upload release, then manifest
+        run: uv run python main.py process --run-dir "$RUNS/${{ steps.collect.outputs.run_id }}" --geocode --exchange --target "$SITE"
+      - name: Upload flat data files, then manifest
+        if: ${{ steps.collect.outputs.publish == 'true' }}
         run: |
-          release="data/releases/${{ steps.collect.outputs.run_id }}"
-          aws s3 cp "$SITE/$release" "$DATA/$release" --recursive --cache-control "public, max-age=31536000, immutable"
-          aws s3 cp "$SITE/data/manifest.json" "$DATA/data/manifest.json" --content-type application/json --cache-control "public, max-age=60, must-revalidate"
-          jq '{dataset_version, scope, count, generated_at}' "$SITE/data/manifest.json"
+          for name in available.json history.json; do
+            aws s3 cp "$SITE/$name" "$DATA/$name" --content-type application/json --cache-control "public, max-age=0, must-revalidate"
+          done
+          aws s3 cp "$SITE/ids.txt" "$DATA/ids.txt" --content-type "text/plain; charset=utf-8" --cache-control "public, max-age=0, must-revalidate"
+          aws s3 cp "$SITE/manifest.json" "$DATA/manifest.json" --content-type application/json --cache-control "public, max-age=0, must-revalidate"
+          jq '{dataset_version, scope, count, history_count, generated_at}' "$SITE/manifest.json"
       - name: Save caches and run trace to the private bucket
         if: ${{ always() && steps.collect.outputs.run_id != '' }}
         run: |

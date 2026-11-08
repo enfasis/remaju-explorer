@@ -1,4 +1,4 @@
-import { dataPath, fetchJson, type AuctionDetail, type Manifest, type Snapshot } from './data'
+import { availableReference, cleanDetail, cleanSnapshot, dataPath, fetchJson, historyDetail, HttpError, summaryFromAuction, type AuctionDetail, type FileReference, type FullSnapshot, type History, type Manifest, type Snapshot } from './data'
 
 const prefix = 'remaju:'
 const manifestKey = `${prefix}manifest:${dataPath}`
@@ -37,17 +37,23 @@ function once<T>(key: string, load: () => Promise<T>): Promise<T> {
   return pending
 }
 
-async function fetchManifest(): Promise<Manifest> {
+async function fetchManifest(fresh = false): Promise<Manifest> {
   const cached = read<Manifest>(manifestKey)
-  if (cached && Date.now() - cached.at < manifestMaxAge) return cached.value
+  if (!fresh && cached && Date.now() - cached.at < manifestMaxAge) return cached.value
   try {
-    const manifest = await fetchJson<Manifest>(dataPath)
-    if (manifest.schema_version !== 1) throw new Error('Versión de datos incompatible.')
+    let manifest: Manifest
+    try {
+      manifest = await fetchJson<Manifest>(dataPath, undefined, true)
+    } catch (error) {
+      if (!(error instanceof HttpError) || error.status !== 404 || dataPath !== 'manifest.json') throw error
+      manifest = await fetchJson<Manifest>('data/manifest.json', undefined, true)
+    }
+    if (![1, 2].includes(manifest.schema_version)) throw new Error('Versión de datos incompatible.')
     write(manifestKey, manifest)
     prune(manifest.dataset_version)
     return manifest
   } catch (error) {
-    if (cached) return cached.value
+    if (!fresh && cached) return cached.value
     throw error
   }
 }
@@ -56,23 +62,45 @@ export function loadManifest(): Promise<Manifest> {
   return once(manifestKey, fetchManifest)
 }
 
-async function loadRelease<T>(path: string): Promise<T> {
-  const manifest = await loadManifest()
-  const key = `${prefix}${manifest.dataset_version}:${path}`
-  return once(key, async () => {
-    const cached = read<T>(key)
-    if (cached) return cached.value
-    const value = await fetchJson<T>(path)
-    write(key, value)
-    return value
-  })
+async function loadDocument<T extends { dataset_version?: string }>(reference: (manifest: Manifest) => FileReference): Promise<T> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const manifest = await loadManifest()
+    const file = reference(manifest)
+    const key = `${prefix}${manifest.dataset_version}:${file.path}`
+    try {
+      return await once(key, async () => {
+        const cached = read<T>(key)
+        if (cached) return cached.value
+        const value = await fetchJson<T>(file.path, file.sha256, true)
+        if (manifest.schema_version === 2 && value.dataset_version !== manifest.dataset_version) throw new Error('Versión de datos incompatible.')
+        write(key, value)
+        return value
+      })
+    } catch (error) {
+      if (attempt === 2) throw error
+      const fresh = await fetchManifest(true)
+      memory.set(manifestKey, Promise.resolve(fresh))
+    }
+  }
+  throw new Error('No se pudieron cargar los datos.')
 }
 
 export async function loadSnapshot(): Promise<Snapshot> {
-  const manifest = await loadManifest()
-  return loadRelease<Snapshot>(manifest.availability.path)
+  const document = await loadDocument<Snapshot | FullSnapshot>(availableReference)
+  return cleanSnapshot({ ...document, auctions: document.auctions.map(item => 'list_data' in item ? summaryFromAuction(item) : item) })
 }
 
-export function loadDetail(path: string): Promise<AuctionDetail> {
-  return loadRelease<AuctionDetail>(path)
+export async function loadDetail(idOrPath: string): Promise<AuctionDetail> {
+  const manifest = await loadManifest()
+  if (manifest.schema_version === 1) return cleanDetail(await fetchJson<AuctionDetail>(idOrPath))
+  const snapshot = await loadSnapshot()
+  const available = snapshot.auctions.find(item => item.auction_id === idOrPath)
+  if (available?.detail) return available.detail
+  const history = await loadDocument<History>(manifest => {
+    if (!manifest.history) throw new Error('Publicación sin historial.')
+    return manifest.history
+  })
+  const record = history.records[idOrPath]
+  if (!record) throw new Error('Remate no disponible.')
+  return historyDetail(record.document)
 }
