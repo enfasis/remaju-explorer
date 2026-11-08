@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useId, useMemo, useState } from 'react'
 import { parseAsString, useQueryStates } from 'nuqs'
 import { Input, Label, Switch } from 'tamagui'
 import { loadManifest, loadSnapshot } from '../cache'
-import ViewSelector, { resultView } from '../components/view-selector'
 import AuctionTable, { tableColumns } from '../components/auction-table'
 import type { MapFocus, MapPoint } from '../components/auction-map'
 import FilterSelect, { choices } from '../components/filter-select'
@@ -45,14 +44,14 @@ export default function Home() {
   const [manifest, setManifest] = useState<Manifest | null>(null)
   const [auctions, setAuctions] = useState<Summary[]>([])
   const [error, setError] = useState('')
-  const view = resultView(filters.view)
+  const [showMap, setShowMap] = useState(false)
   const [focus, setFocus] = useState<MapFocus | null>(null)
   const rate = useRate()
   useTitle()
   useEffect(() => { Promise.all([loadManifest(), loadSnapshot()]).then(([m, data]) => { setManifest(m); setAuctions(data.auctions) }).catch((e: Error) => setError(e.message)) }, [])
   const results = useMemo(() => orderAuctions(auctions.filter(a => matches(a, filters, rate)), filters.sort, filters.currency, rate), [auctions, filters, rate])
   const points = useMemo<MapPoint[]>(() => results.flatMap(a => (a.coordinates || []).map((p, index) => ({ ...p, id: index ? `${a.auction_id}:${index}` : a.auction_id, label: `Remate ${a.numero_remate}`, path: `auctions/${encodeURIComponent(a.auction_id)}${location.search}` }))), [results, filters])
-  const locate = (auction: Summary) => { void setFilters({ view: 'map' }, { history: 'push' }); setFocus({ id: auction.auction_id, at: Date.now() }) }
+  const locate = (auction: Summary) => { setShowMap(true); setFocus({ id: auction.auction_id, at: Date.now() }) }
   const options = (key: Facet) => facetOptions(auctions, filters, rate, key)
   const update = (key: keyof Filters, value: string) => void setFilters({ [key]: value || null, ...(key === 'department' ? { province: null, district: null } : key === 'province' ? { district: null } : {}) }, { history: 'push' })
   const type = (key: keyof Filters, value: string) => void setFilters({ [key]: value || null }, { history: 'replace' })
@@ -74,7 +73,7 @@ export default function Home() {
         <DateField label="Ofertas desde" value={filters.from} onChange={value => type('from', value)} />
         <DateField label="Ofertas hasta" value={filters.to} onChange={value => type('to', value)} />
         <div className="filter-actions">
-          <Toggle label="Solo con ubicación" checked={filters.mapped === '1'} onChange={checked => update('mapped', checked ? '1' : '')} />
+          <Toggle label="Con mapa" checked={filters.mapped === '1'} onChange={checked => update('mapped', checked ? '1' : '')} />
           <Toggle label="USD" checked={filters.currency === 'USD'} onChange={checked => update('currency', checked ? 'USD' : '')} />
           <IconButton label="Limpiar filtros" icon={<ClearFiltersIcon />} controls="auction-list" onPress={clear} />
         </div>
@@ -85,12 +84,13 @@ export default function Home() {
       <div className="results-bar">
         <span role="status" aria-live="polite">{resultsLabel}</span>
         <div className="result-controls">
-          <ViewSelector value={view} onChange={value => void setFilters({ view: value === 'table' ? null : value }, { history: 'push' })} />
+          <Toggle label="Mapa" checked={showMap} onChange={setShowMap} />
           <FilterSelect label="Ordenar por" value={filters.sort} options={sorts} onChange={value => update('sort', value || 'date-desc')} />
         </div>
       </div>
-      <div className="results-layout">
-        <div>{error ? <div role="alert" className="message glass">{error} Todavía no hay una publicación disponible.</div> : !manifest ? <div className="message glass" role="status">Cargando datos…</div> : results.length === 0 ? <div className="message glass" role="status">No hay remates que coincidan con los filtros.</div> : view === 'table' ? <AuctionTable auctions={results} currency={filters.currency} rate={rate} search={location.search} sort={filters.sort} onSort={value => update('sort', value)} onLocate={locate} /> : <div id="auction-list"><Suspense fallback={<p role="status">Cargando mapa…</p>}><AuctionMap points={points} focus={focus} /></Suspense></div>}</div>
+      <div className={showMap ? 'results-layout with-map' : 'results-layout'}>
+        <div>{error ? <div role="alert" className="message glass">{error} Todavía no hay una publicación disponible.</div> : !manifest ? <div className="message glass" role="status">Cargando datos…</div> : results.length === 0 ? <div className="message glass" role="status">No hay remates que coincidan con los filtros.</div> : <AuctionTable auctions={results} currency={filters.currency} rate={rate} search={location.search} sort={filters.sort} onSort={value => update('sort', value)} onLocate={locate} />}</div>
+        {showMap && <Suspense fallback={<p role="status">Cargando mapa…</p>}><AuctionMap points={points} focus={focus} /></Suspense>}
       </div>
     </section>
   </>

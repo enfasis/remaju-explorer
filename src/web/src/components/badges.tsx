@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import { formatDateTime, titleCase } from '../data'
+import { formatShortDate, titleCase } from '../data'
 
-export type Tone = 'red' | 'green' | 'neutral'
+export type Tone = 'red' | 'green' | 'yellow' | 'blue'
 
 export function Badge({ tone, label, children }: { tone: Tone; label: string; children: ReactNode }) {
   return <li className={`badge badge-${tone}`}><span className="sr-only">{label}: </span>{children}</li>
@@ -16,10 +16,10 @@ type Props = { phase?: string | null; until?: string | null; status?: string | n
 export function AuctionBadges({ phase, until, status, kind, call, label = 'Estado del remate' }: Props) {
   if (!phase && !status && !kind && !call) return null
   return <ul className="badges" aria-label={label}>
-    {kind && <Badge tone="neutral" label="Tipo de inmueble">{titleCase(kind)}</Badge>}
-    {phase && <Badge tone="neutral" label="Fase actual">{phase}</Badge>}
+    {kind && <Badge tone="yellow" label="Tipo de inmueble">{titleCase(kind)}</Badge>}
+    {phase && <Badge tone="blue" label="Fase actual">{phase}</Badge>}
+    {phase && until && <li className="badge-until">hasta {formatShortDate(until)}</li>}
     {status && <Badge tone={statusTone(status)} label="Estado">{status}</Badge>}
-    {call && <Badge tone="neutral" label="Convocatoria">{titleCase(call)}</Badge>}
-    {phase && until && <li className="badge-until">Hasta <time dateTime={until}>{formatDateTime(until)}</time></li>}
+    {call && <Badge tone="red" label="Convocatoria">{titleCase(call)}</Badge>}
   </ul>
 }

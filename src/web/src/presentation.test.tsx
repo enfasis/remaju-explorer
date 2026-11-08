@@ -1,36 +1,25 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { AuctionBadges } from './components/badges'
-import ViewSelector, { resultView } from './components/view-selector'
+import { Prices } from './components/prices'
 
-describe('result views', () => {
-  it('defaults to the table, including legacy card links', () => {
-    for (const value of ['', 'table', 'cards', 'unknown']) expect(resultView(value)).toBe('table')
-    expect(resultView('map')).toBe('map')
+describe('original auction presentation', () => {
+  it('preserves the colorful property, phase, status and convocatoria badges', () => {
+    const markup = renderToStaticMarkup(<AuctionBadges kind="CASA" phase="Inscripción" status="En proceso" call="Primera convocatoria" />)
+    for (const color of ['yellow', 'blue', 'green', 'red']) expect(markup).toContain(`badge-${color}`)
+    expect(markup).toContain('Casa')
+    expect(markup).toContain('Inscripción')
+    expect(markup).toContain('En proceso')
   })
 
-  it.each(['table', 'map'] as const)('shows one selected view for %s', value => {
-    const markup = renderToStaticMarkup(<ViewSelector value={value} onChange={() => {}} />)
-    expect(markup).toContain('aria-label="Vista de resultados"')
-    expect(markup.match(/aria-pressed="true"/g)).toHaveLength(1)
-    expect(markup).toContain(`aria-pressed="true" aria-controls="auction-list">${value === 'table' ? 'Tabla' : 'Mapa'}`)
-    expect(markup).not.toContain('Tarjetas')
-  })
-})
-
-describe('auction metadata', () => {
-  it('keeps categories and process information neutral and exposes the deadline', () => {
-    const markup = renderToStaticMarkup(<AuctionBadges kind="CASA" phase="Inscripción" until="2026-11-09T12:00:00" status="En proceso" call="Primera convocatoria" />)
-    expect(markup.match(/badge-neutral/g)).toHaveLength(3)
-    expect(markup).toContain('badge-green')
-    expect(markup).toContain('<time dateTime="2026-11-09T12:00:00">')
-    expect(markup).not.toContain('badge-yellow')
-    expect(markup).not.toContain('badge-blue')
+  it('keeps shared price formatting unchanged after removing the card component', () => {
+    const markup = renderToStaticMarkup(<Prices money={{ amount: '100.00', currency: 'PEN', raw: 'S/ 100' }} currency="PEN" rate={{ penToUsd: '0.25', date: '2026-11-07', source: 'fixture' }} />)
+    expect(markup).toContain('<strong>S/ 100.00</strong>')
+    expect(markup).toContain('<span>≈ US$ 25.00</span>')
   })
 
-  it('reserves warning emphasis for interrupted auctions', () => {
-    const markup = renderToStaticMarkup(<AuctionBadges status="Suspendido" />)
-    expect(markup).toContain('badge-red')
-    expect(markup).not.toContain('badge-green')
+  it('does not invent metadata or prices when data is absent', () => {
+    expect(renderToStaticMarkup(<AuctionBadges />)).toBe('')
+    expect(renderToStaticMarkup(<Prices money={null} currency="PEN" rate={null} />)).toContain('Precio no disponible')
   })
 })
