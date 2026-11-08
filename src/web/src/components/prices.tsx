@@ -5,6 +5,6 @@ export function Prices({ money, currency, rate, className = 'prices' }: { money:
   const secondary = displayMoney(money, otherCurrency(currency), rate)
   return <p className={className}>
     <strong>{primary}</strong>
-    {secondary !== primary && secondary !== money?.raw && <span>{secondary}</span>}
+    {primary !== money?.raw && secondary !== primary && secondary !== money?.raw && <span>{secondary}</span>}
   </p>
 }

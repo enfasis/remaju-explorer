@@ -22,6 +22,10 @@ const sorts = [
   { value: 'date-asc', label: 'Fecha: antigua primero' },
   { value: 'price-asc', label: 'Precio: menor primero' },
   { value: 'price-desc', label: 'Precio: mayor primero' },
+  { value: 'province-asc', label: 'Provincia: ascendente' },
+  { value: 'province-desc', label: 'Provincia: descendente' },
+  { value: 'district-asc', label: 'Distrito: ascendente' },
+  { value: 'district-desc', label: 'Distrito: descendente' },
   ...tableColumns.filter(column => column.key !== 'date' && column.key !== 'price').flatMap(column => [{ value: `${column.key}-asc`, label: `${column.label}: ascendente` }, { value: `${column.key}-desc`, label: `${column.label}: descendente` }]),
 ]
 
@@ -59,25 +63,37 @@ export default function Home() {
   const clear = () => void setFilters(Object.fromEntries(Object.keys(parsers).filter(key => key !== 'view').map(k => [k, null])), { history: 'push' })
   const select = (label: string, key: keyof Filters, values: string[]) => <FilterSelect label={label} value={filters[key]} options={choices(values)} onChange={value => update(key, value)} />
   const resultsLabel = `${results.length} resultados${manifest?.demo ? ' · Muestra parcial del 07/11/2026' : manifest?.scope === 'partial' ? ' · Muestra parcial' : ''}`
+  const advancedCount = ['province', 'district', 'phase', 'minPrice', 'maxPrice', 'from', 'to', 'mapped'].filter(key => filters[key as keyof Filters]).length
   return <>
-    <h1 className="sr-only">Remates judiciales del Perú</h1>
-    <section className="filters glass" aria-label="Filtros de remates">
-      <form className="filter-grid" role="search" aria-controls="auction-list" onSubmit={event => event.preventDefault()}>
-        <Input size="sm" className="field search" type="search" placeholder="Buscar por número, ubicación o descripción" aria-label="Buscar remates" value={filters.q} onChangeText={value => type('q', value)} />
-        {select('Departamento', 'department', options('department'))}
-        {select('Provincia', 'province', options('province'))}
-        {select('Distrito', 'district', options('district'))}
-        {select('Tipo de inmueble', 'propertyType', options('propertyType'))}
-        {select('Fase', 'phase', options('phase'))}
-        <Input size="sm" className="field" inputMode="decimal" placeholder={`Precio mínimo (${filters.currency})`} aria-label={`Precio mínimo en ${filters.currency}`} value={filters.minPrice} onChangeText={value => type('minPrice', value)} />
-        <Input size="sm" className="field" inputMode="decimal" placeholder={`Precio máximo (${filters.currency})`} aria-label={`Precio máximo en ${filters.currency}`} value={filters.maxPrice} onChangeText={value => type('maxPrice', value)} />
-        <DateField label="Ofertas desde" value={filters.from} onChange={value => type('from', value)} />
-        <DateField label="Ofertas hasta" value={filters.to} onChange={value => type('to', value)} />
-        <div className="filter-actions">
-          <Toggle label="Solo con ubicación" checked={filters.mapped === '1'} onChange={checked => update('mapped', checked ? '1' : '')} />
-          <Toggle label="USD" checked={filters.currency === 'USD'} onChange={checked => update('currency', checked ? 'USD' : '')} />
-          <IconButton label="Limpiar filtros" icon={<ClearFiltersIcon />} controls="auction-list" onPress={clear} />
+    <header className="catalogue-heading">
+      <div><p className="eyebrow">Perú / Consulta pública</p><h1>Remates judiciales</h1></div>
+      <p>Inmuebles, montos y plazos.<br />La información para comparar, en un solo registro.</p>
+    </header>
+    <section className="filters" aria-label="Filtros de remates">
+      <form role="search" aria-controls="auction-list" onSubmit={event => event.preventDefault()}>
+        <label className="search-label" htmlFor="auction-search">Encuentra un remate</label>
+        <Input id="auction-search" size="lg" className="field search" type="search" placeholder="Número de remate, ubicación o descripción…" aria-label="Buscar remates" value={filters.q} onChangeText={value => type('q', value)} />
+        <div className="essential-filters">
+          <div className="filter-field"><span>Departamento</span>{select('Departamento', 'department', options('department'))}</div>
+          <div className="filter-field"><span>Inmueble</span>{select('Tipo de inmueble', 'propertyType', options('propertyType'))}</div>
+          <div className="filter-actions">
+            <Toggle label="USD" checked={filters.currency === 'USD'} onChange={checked => update('currency', checked ? 'USD' : '')} />
+            <IconButton label="Limpiar filtros" icon={<ClearFiltersIcon />} controls="auction-list" onPress={clear} />
+          </div>
         </div>
+        <details className="advanced-filters" open={advancedCount > 0 || undefined}>
+          <summary>Filtros avanzados <span>{advancedCount ? `${advancedCount} activos` : 'Ubicación, precio y fechas'}</span></summary>
+          <div className="filter-grid">
+            <div className="filter-field"><span>Provincia</span>{select('Provincia', 'province', options('province'))}</div>
+            <div className="filter-field"><span>Distrito</span>{select('Distrito', 'district', options('district'))}</div>
+            <div className="filter-field"><span>Fase</span>{select('Fase', 'phase', options('phase'))}</div>
+            <div className="filter-field"><span>Precio mínimo · {filters.currency}</span><Input size="sm" className="field" inputMode="decimal" placeholder="Sin mínimo" aria-label={`Precio mínimo en ${filters.currency}`} value={filters.minPrice} onChangeText={value => type('minPrice', value)} /></div>
+            <div className="filter-field"><span>Precio máximo · {filters.currency}</span><Input size="sm" className="field" inputMode="decimal" placeholder="Sin máximo" aria-label={`Precio máximo en ${filters.currency}`} value={filters.maxPrice} onChangeText={value => type('maxPrice', value)} /></div>
+            <div className="filter-field"><span>Ofertas desde</span><DateField label="Ofertas desde" value={filters.from} onChange={value => type('from', value)} /></div>
+            <div className="filter-field"><span>Ofertas hasta</span><DateField label="Ofertas hasta" value={filters.to} onChange={value => type('to', value)} /></div>
+            <Toggle label="Solo con ubicación" checked={filters.mapped === '1'} onChange={checked => update('mapped', checked ? '1' : '')} />
+          </div>
+        </details>
       </form>
     </section>
     <section className="results" aria-labelledby="results-title">
