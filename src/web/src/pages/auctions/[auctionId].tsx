@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { loadDetail, loadSnapshot } from '../../cache'
-import { Prices } from '../../components/auction-card'
+import { Prices } from '../../components/prices'
 import { AuctionBadges } from '../../components/badges'
 import IconButton from '../../components/icon-button'
 import { CloseIcon } from '../../components/icons'

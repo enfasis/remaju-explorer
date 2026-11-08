@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import { activePhase, formatShortDate, titleCase, type Rate, type Summary } from '../data'
 import { AuctionBadges } from './badges'
-import { Prices } from './auction-card'
+import { Prices } from './prices'
 import IconButton from './icon-button'
 import { PinIcon } from './icons'
 
@@ -42,7 +42,7 @@ export default function AuctionTable({ auctions, currency, rate, search, sort, o
           <td>{titleCase(auction.tipo_inmueble) || '—'}</td>
           <td className="table-price"><Prices money={auction.precio_base} currency={currency} rate={rate} className="prices compact" /></td>
           <td><AuctionBadges phase={phase.fase} until={phase.until} status={auction.estado} /></td>
-          <td>{date ? <time dateTime={date}>{formatShortDate(`${date}T12:00:00`)}</time> : '—'}</td>
+          <td className="table-date">{date ? <time dateTime={date}>{formatShortDate(`${date}T12:00:00`)}</time> : '—'}</td>
           <td>{Boolean(auction.coordinates?.length) && <IconButton label={`Ver remate ${auction.numero_remate} en el mapa`} icon={<PinIcon />} controls="auction-map" onPress={() => onLocate(auction)} />}</td>
         </tr>
       })}</tbody>
