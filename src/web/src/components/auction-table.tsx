@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import { activePhase, formatDeadline, place, titleCase, type Rate, type Summary } from '../data'
 import { AuctionStatus } from './auction-status'
+import AuctionPhase from './auction-phase'
 import { Prices } from './prices'
 import IconButton from './icon-button'
 import { PinIcon } from './icons'
@@ -38,7 +39,7 @@ export default function AuctionTable({ auctions, currency, rate, search, sort, o
           <td className="table-location"><strong>{titleCase(auction.departamento) || 'Ubicación no publicada'}</strong><span>{place({ provincia: auction.provincia, distrito: auction.distrito })}</span></td>
           <td className="table-kind">{titleCase(auction.tipo_inmueble) || '—'}</td>
           <td className="table-price"><Prices money={auction.precio_base} currency={currency} rate={rate} className="prices compact" /></td>
-          <td className="table-phase">{phase.fase || '—'}</td>
+          <td className="table-phase">{phase.fase ? <AuctionPhase value={phase.fase} /> : '—'}</td>
           <td className="table-date">{date ? <time dateTime={date}>{formatDeadline(`${date}T12:00:00`).date}</time> : <span className="muted">Sin fecha de ofertas</span>}{phase.until && <span className="phase-deadline">Fin de fase: <time dateTime={phase.until}>{formatDeadline(phase.until).date}</time></span>}</td>
           <td><AuctionStatus value={auction.estado} /></td>
           <td>{Boolean(auction.coordinates?.length) && <IconButton label={`Ver remate ${auction.numero_remate} en el mapa`} icon={<PinIcon />} controls="auction-map" onPress={() => onLocate(auction)} />}</td>

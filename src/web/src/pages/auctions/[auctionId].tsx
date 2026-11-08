@@ -86,7 +86,7 @@ export default function AuctionDetail() {
     {error ? <p role="alert" className="message glass">{error}</p> : !detail ? <p role="status" className="message glass">Cargando detalle…</p> : <>
       <header className="detail-hero reveal">
         <div className="hero-top">
-          <span className="metadata-label">Remates judiciales / Registro del inmueble</span>
+          <button type="button" className="back-link" onClick={close}>← Resultados</button>
           <IconButton label="Cerrar y volver a los resultados (Esc)" icon={<CloseIcon />} onPress={close} />
         </div>
         <AuctionHero detail={detail} summary={summary} currency={currency} rate={rate} />

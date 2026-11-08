@@ -66,8 +66,7 @@ export default function Home() {
   const advancedCount = ['province', 'district', 'phase', 'minPrice', 'maxPrice', 'from', 'to', 'mapped'].filter(key => filters[key as keyof Filters]).length
   return <>
     <header className="catalogue-heading">
-      <div><p className="eyebrow">Perú / Consulta pública</p><h1>Remates judiciales</h1></div>
-      <p>Inmuebles, montos y plazos.<br />La información para comparar, en un solo registro.</p>
+      <div><h1>Remates judiciales</h1><p>Encuentra y compara inmuebles en todo el Perú.</p></div>
     </header>
     <section className="filters" aria-label="Filtros de remates">
       <form role="search" aria-controls="auction-list" onSubmit={event => event.preventDefault()}>

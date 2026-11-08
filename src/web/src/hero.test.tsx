@@ -39,7 +39,16 @@ describe('auction hero', () => {
     const matching = { ...detail, estado: { estado: 'En proceso', fase: 'Inscripción' }, seguimiento: { expediente: {}, eventos: [{ estado_convocatoria: 'En proceso' }] } }
     const markup = renderToStaticMarkup(<AuctionHero detail={matching} summary={summary} currency="PEN" rate={null} />)
     expect(markup).not.toContain('recorded-status')
-    expect(markup).not.toContain('badge')
+    expect(markup.match(/class="phase-chip"/g)).toHaveLength(1)
+  })
+
+  it('keeps identity, status and price together before the secondary process row', () => {
+    const markup = renderToStaticMarkup(<AuctionHero detail={detail} summary={summary} currency="PEN" rate={null} />)
+    const primary = markup.slice(markup.indexOf('hero-composition'), markup.indexOf('hero-facts'))
+    expect(primary).toContain('id="detail-title"')
+    expect(primary).toContain('Estado en listado')
+    expect(primary).toContain('S/ 269,947.37')
+    expect(markup).not.toContain('hero-intro')
   })
 
   it('handles missing prices, locations, statuses and schedules without invented facts', () => {

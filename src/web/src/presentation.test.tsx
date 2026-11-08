@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { AuctionStatus, statusTone } from './components/auction-status'
 import ViewSelector, { resultView } from './components/view-selector'
 import { Prices } from './components/prices'
+import AuctionPhase from './components/auction-phase'
 
 describe('result views', () => {
   it('defaults to the table, including legacy card links', () => {
@@ -44,5 +45,14 @@ describe('price presentation', () => {
     const markup = renderToStaticMarkup(<Prices money={{ raw: '$ 40,066.67', currency: 'USD', amount: '40066.67' }} currency="PEN" rate={null} />)
     expect(markup).toContain('$ 40,066.67')
     expect(markup).not.toContain('<span>')
+  })
+})
+
+describe('published phase', () => {
+  it('uses one secondary chip with an accessible source label', () => {
+    const markup = renderToStaticMarkup(<AuctionPhase value="Publicación e inscripción" />)
+    expect(markup).toContain('class="phase-chip"')
+    expect(markup).toContain('aria-label="Fase publicada: Publicación e inscripción"')
+    expect(renderToStaticMarkup(<AuctionPhase value={null} />)).toBe('')
   })
 })
