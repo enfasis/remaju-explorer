@@ -1,19 +1,19 @@
 import { Link } from 'react-router'
-import { activePhase, formatDeadline, place, titleCase, type Rate, type Summary } from '../data'
-import { AuctionStatus } from './auction-status'
-import AuctionPhase from './auction-phase'
+import { activePhase, formatShortDate, titleCase, type Rate, type Summary } from '../data'
+import { AuctionBadges } from './badges'
 import { Prices } from './prices'
 import IconButton from './icon-button'
 import { PinIcon } from './icons'
 
 export const tableColumns = [
   { key: 'number', label: 'Remate' },
-  { key: 'department', label: 'Ubicación' },
+  { key: 'department', label: 'Departamento' },
+  { key: 'province', label: 'Provincia' },
+  { key: 'district', label: 'Distrito' },
   { key: 'type', label: 'Inmueble' },
   { key: 'price', label: 'Precio base' },
   { key: 'phase', label: 'Fase' },
   { key: 'date', label: 'Fecha de ofertas' },
-  { key: 'status', label: 'Estado en listado' },
 ] as const
 
 type Props = { auctions: Summary[]; currency: string; rate: Rate | null; search: string; sort: string; onSort: (sort: string) => void; onLocate: (auction: Summary) => void }
@@ -35,13 +35,14 @@ export default function AuctionTable({ auctions, currency, rate, search, sort, o
         const phase = activePhase(auction)
         const date = auction.offer_date ?? auction.offer_at?.slice(0, 10)
         return <tr key={auction.auction_id}>
-          <th scope="row"><Link className="table-auction-link" to={`/auctions/${encodeURIComponent(auction.auction_id)}${search}`} state={{ fromList: true }}><span className="record-prefix">N.º</span> {auction.numero_remate}<span className="record-open">Ver ficha <span aria-hidden="true">↗</span></span></Link></th>
-          <td className="table-location"><strong>{titleCase(auction.departamento) || 'Ubicación no publicada'}</strong><span>{place({ provincia: auction.provincia, distrito: auction.distrito })}</span></td>
-          <td className="table-kind">{titleCase(auction.tipo_inmueble) || '—'}</td>
+          <th scope="row"><Link className="table-auction-link" to={`/auctions/${encodeURIComponent(auction.auction_id)}${search}`} state={{ fromList: true }}>N.º {auction.numero_remate}</Link></th>
+          <td>{titleCase(auction.departamento) || '—'}</td>
+          <td>{titleCase(auction.provincia) || '—'}</td>
+          <td>{titleCase(auction.distrito) || '—'}</td>
+          <td>{titleCase(auction.tipo_inmueble) || '—'}</td>
           <td className="table-price"><Prices money={auction.precio_base} currency={currency} rate={rate} className="prices compact" /></td>
-          <td className="table-phase">{phase.fase ? <AuctionPhase value={phase.fase} /> : '—'}</td>
-          <td className="table-date">{date ? <time dateTime={date}>{formatDeadline(`${date}T12:00:00`).date}</time> : <span className="muted">Sin fecha de ofertas</span>}{phase.until && <span className="phase-deadline">Fin de fase: <time dateTime={phase.until}>{formatDeadline(phase.until).date}</time></span>}</td>
-          <td><AuctionStatus value={auction.estado} /></td>
+          <td><AuctionBadges phase={phase.fase} until={phase.until} status={auction.estado} /></td>
+          <td className="table-date">{date ? <time dateTime={date}>{formatShortDate(`${date}T12:00:00`)}</time> : '—'}</td>
           <td>{Boolean(auction.coordinates?.length) && <IconButton label={`Ver remate ${auction.numero_remate} en el mapa`} icon={<PinIcon />} controls="auction-map" onPress={() => onLocate(auction)} />}</td>
         </tr>
       })}</tbody>

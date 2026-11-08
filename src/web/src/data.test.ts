@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareDecimal, convertedAmount, currentPhase, dataUrl, formatDeadline, historyDetail, orderAuctions, parseMoney, phaseState, place, siteUrl, sortAuctions, summaryFromAuction, type HistoricalAuction, type Summary } from './data'
+import { compareDecimal, convertedAmount, currentPhase, dataUrl, orderAuctions, parseMoney, phaseState, place, siteUrl, sortAuctions, type Summary } from './data'
 
 describe('display conversion', () => {
   const rate = { penToUsd: '0.25', date: '2026-11-07', source: 'fixture' }
@@ -67,40 +67,5 @@ describe('detail helpers', () => {
     expect(phaseState(phases[0], currentPhase(phases, during), during)).toBe('current')
     expect(phaseState(phases[1], currentPhase(phases, gap), gap)).toBe('upcoming')
     expect(currentPhase(phases, Date.parse('2027-01-01T00:00:00-05:00'))?.nro).toBe(2)
-  })
-  it('never marks the last expired phase as current', () => {
-    const now = Date.parse('2027-01-01T00:00:00-05:00')
-    const current = currentPhase(phases, now)
-    expect(phases.map(phase => phaseState(phase, current, now))).toEqual(['done', 'done'])
-  })
-  it('shows the year and Peru time without inventing missing dates', () => {
-    expect(formatDeadline('2026-11-17 23:59:59').date).toContain('2026')
-    expect(formatDeadline('2026-11-17 23:59:59').time).toContain('11:59')
-    expect(formatDeadline('not-a-date')).toEqual({ date: 'not-a-date', time: 'Hora no disponible' })
-  })
-})
-
-describe('published state and recorded history', () => {
-  const auction: HistoricalAuction = {
-    numero_remate: '123',
-    list_data: { estado: 'En proceso', fase: 'Inscripción' },
-    detail: { remate_tab: { convocatoria: 'SEGUNDA CONVOCATORIA' }, inmuebles_tab: { departamento: 'AREQUIPA', provincia: null, distrito: null, inmuebles: [] }, cronograma_tab: { fases: [] } },
-    seguimiento: { expediente: {}, eventos: [{ nro_convocatoria: 'PRIMERA CONVOCATORIA', estado_convocatoria: 'Desierto', fase_convocatoria: 'Ofertas' }] },
-  }
-
-  it('keeps the listing and detail consistent without discarding historical states', () => {
-    const summary = summaryFromAuction(auction)
-    const detail = historyDetail(auction)
-    expect(summary.estado).toBe('En proceso')
-    expect(detail.estado).toEqual({ estado: 'En proceso', fase: 'Inscripción' })
-    expect(summary.detail?.estado).toEqual(detail.estado)
-    expect(detail.seguimiento?.eventos[0].estado_convocatoria).toBe('Desierto')
-    expect(auction.seguimiento?.eventos[0].estado_convocatoria).toBe('Desierto')
-  })
-
-  it('falls back to recorded state only when the listing state is absent', () => {
-    const missing = { ...auction, list_data: { estado: '', fase: '' } }
-    expect(historyDetail(missing).estado).toEqual({ estado: 'Desierto', fase: 'Ofertas' })
-    expect(summaryFromAuction(missing).estado).toBe('Desierto')
   })
 })

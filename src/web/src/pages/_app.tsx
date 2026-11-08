@@ -8,7 +8,6 @@ import IconButton from '../components/icon-button'
 import { GitHubIcon, MoonIcon, SunIcon } from '../components/icons'
 import { config } from '../theme'
 import { usdInPen, useRate } from '../use-rate'
-import { siteUrl } from '../data'
 
 function initialDark(): boolean {
   const stored = localStorage.getItem('theme')
@@ -33,7 +32,7 @@ export default function App() {
       <header className="header" role="banner">
         <nav className="wrap header-inner" aria-label="Principal">
           <ExchangeRate />
-          <Link className="brand" to="/" aria-label="remaju mm, ir al inicio"><img className="brand-mark" src={siteUrl('remaju-mark.svg')} alt="" aria-hidden="true" />remaju<sup aria-hidden="true">mm</sup></Link>
+          <Link className="brand" to="/" aria-label="remaju mm, ir al inicio">remaju<sup aria-hidden="true">mm</sup></Link>
           <div className="header-actions" role="toolbar" aria-label="Preferencias y enlaces">
             <IconButton label={dark ? 'Activar modo claro' : 'Activar modo oscuro'} icon={dark ? <SunIcon /> : <MoonIcon />} onPress={() => setDark(!dark)} />
             <Glossary />

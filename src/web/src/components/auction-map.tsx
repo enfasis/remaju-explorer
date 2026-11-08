@@ -52,7 +52,7 @@ export default function AuctionMap({ points, focus }: { points: MapPoint[]; focu
       const label = document.createElement(point.path ? 'a' : 'span')
       label.textContent = point.label
       if (label instanceof HTMLAnchorElement && point.path) label.href = siteUrl(point.path)
-      markers.current.set(point.id, L.circleMarker([point.latitude, point.longitude], { radius: 8, color: chavin.teal, weight: 2, fillColor: chavin.teal, fillOpacity: .75 }).bindPopup(label).addTo(instance))
+      markers.current.set(point.id, L.circleMarker([point.latitude, point.longitude], { radius: 8, color: chavin.red, weight: 2, fillColor: chavin.red, fillOpacity: .75 }).bindPopup(label).addTo(instance))
     }
     if (located.length) instance.fitBounds(L.latLngBounds(located.map(p => [p.latitude, p.longitude])), { padding: [30, 30], maxZoom: 14 })
     return () => { instance.remove(); map.current = null }

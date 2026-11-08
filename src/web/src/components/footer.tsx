@@ -3,6 +3,7 @@ import { siteUrl } from '../data'
 
 export default function Footer() {
   return <footer className="footer" role="contentinfo">
+    <div className="weave" aria-hidden="true" />
     <div className="wrap footer-inner">
       <div className="footer-brand">
         <Link className="brand" to="/" aria-label="remaju mm, ir al inicio">remaju<sup aria-hidden="true">mm</sup></Link>

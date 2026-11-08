@@ -21,12 +21,5 @@ describe('auction table', () => {
     expect(markup).toContain('Ordenar por remate, descendente')
     expect(markup).toContain('view=table&amp;department=LIMA')
     expect(markup).toContain('scope="row"')
-    expect(markup).toContain('Ver ficha')
-    expect(markup).toContain('Estado en listado')
-    expect(markup).toContain('status-green">En proceso')
-  })
-  it('sorts published states and keeps missing states last', () => {
-    const values = [...auctions, { auction_id: 'remaju:3', numero_remate: '3', estado: 'Desierto' } as Summary]
-    expect(orderAuctions(values, 'status-asc').map(a => a.estado)).toEqual(['Desierto', 'En proceso', undefined])
   })
 })

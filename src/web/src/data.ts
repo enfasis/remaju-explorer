@@ -57,22 +57,13 @@ export function currentPhase(phases: Phase[], now = Date.now()): Phase | null {
 }
 
 export function phaseState(phase: Phase, current: Phase | null, now = Date.now()): 'done' | 'current' | 'upcoming' {
-  if (current && phase.nro === current.nro && now >= limaTime(phase.fecha_inicio) && now <= limaTime(phase.fecha_fin)) return 'current'
+  if (current && phase.nro === current.nro && now >= limaTime(phase.fecha_inicio)) return 'current'
   return now > limaTime(phase.fecha_fin) ? 'done' : 'upcoming'
 }
 
 export function formatDateTime(value: string): string {
   const time = limaTime(value)
   return Number.isNaN(time) ? value : new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Lima' }).format(time)
-}
-
-export function formatDeadline(value: string): { date: string; time: string } {
-  const time = limaTime(value)
-  if (Number.isNaN(time)) return { date: value, time: 'Hora no disponible' }
-  return {
-    date: new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'America/Lima' }).format(time),
-    time: new Intl.DateTimeFormat('es-PE', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Lima' }).format(time),
-  }
 }
 
 export function convertedAmount(money: Summary['precio_base'], currency: string, rate: Rate | null): string | null {
@@ -151,7 +142,7 @@ export function cleanDetail(detail: AuctionDetail): AuctionDetail {
 export function historyDetail(auction: HistoricalAuction): AuctionDetail {
   const latest = auction.seguimiento?.eventos.at(-1)
   const property = auction.detail.inmuebles_tab
-  return cleanDetail({ numero_remate: auction.numero_remate, ubicacion: property, estado: { fase: auction.list_data.fase || latest?.fase_convocatoria || null, estado: auction.list_data.estado || latest?.estado_convocatoria || null }, remate: auction.detail.remate_tab, inmuebles: property.inmuebles, cronograma: auction.detail.cronograma_tab.fases, seguimiento: auction.seguimiento, source_url: 'https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml' })
+  return cleanDetail({ numero_remate: auction.numero_remate, ubicacion: property, estado: { fase: latest?.fase_convocatoria ?? auction.list_data.fase ?? null, estado: latest?.estado_convocatoria ?? auction.list_data.estado ?? null }, remate: auction.detail.remate_tab, inmuebles: property.inmuebles, cronograma: auction.detail.cronograma_tab.fases, seguimiento: auction.seguimiento, source_url: 'https://remaju.pj.gob.pe/remaju/pages/publico/remateExterno.xhtml' })
 }
 
 export function cleanSnapshot(snapshot: Snapshot): Snapshot {
@@ -161,7 +152,7 @@ export function cleanSnapshot(snapshot: Snapshot): Snapshot {
 export function summaryFromAuction(auction: HistoricalAuction): Summary {
   const detail = historyDetail(auction)
   const property = auction.detail.inmuebles_tab
-  return { auction_id: `remaju:${auction.numero_remate}`, numero_remate: auction.numero_remate, descripcion: String(detail.remate.descripcion ?? auction.list_data.descripcion ?? '') || null, departamento: property.departamento, provincia: property.provincia, distrito: property.distrito, tipo_inmueble: property.inmuebles[0]?.tipo_inmueble ?? null, fase: auction.list_data.fase || detail.estado?.fase || null, estado: auction.list_data.estado || detail.estado?.estado || null, offer_date: auction.list_data.fecha_presentacion ?? null, offer_at: null, precio_base: parseMoney(detail.remate.precio_base ?? auction.list_data.precio_base), coordinates: detail.inmuebles.filter(item => inPeru(item.latitude, item.longitude)).map(item => ({ latitude: item.latitude!, longitude: item.longitude! })), cronograma: detail.cronograma, detail }
+  return { auction_id: `remaju:${auction.numero_remate}`, numero_remate: auction.numero_remate, descripcion: String(detail.remate.descripcion ?? auction.list_data.descripcion ?? '') || null, departamento: property.departamento, provincia: property.provincia, distrito: property.distrito, tipo_inmueble: property.inmuebles[0]?.tipo_inmueble ?? null, fase: auction.list_data.fase ?? detail.estado?.fase ?? null, estado: auction.list_data.estado ?? detail.estado?.estado ?? null, offer_date: auction.list_data.fecha_presentacion ?? null, offer_at: null, precio_base: parseMoney(detail.remate.precio_base ?? auction.list_data.precio_base), coordinates: detail.inmuebles.filter(item => inPeru(item.latitude, item.longitude)).map(item => ({ latitude: item.latitude!, longitude: item.longitude! })), cronograma: detail.cronograma, detail }
 }
 
 export function sortAuctions(items: Summary[]): Summary[] {
@@ -184,7 +175,7 @@ export function compareDecimal(left: string, right: string): number | null {
 
 export function orderAuctions(items: Summary[], order: string, currency?: string, rate: Rate | null = null): Summary[] {
   const sorted = sortAuctions(items)
-  const columns = { number: 'numero_remate', department: 'departamento', province: 'provincia', district: 'distrito', type: 'tipo_inmueble', phase: 'fase', status: 'estado' } as const
+  const columns = { number: 'numero_remate', department: 'departamento', province: 'provincia', district: 'distrito', type: 'tipo_inmueble', phase: 'fase' } as const
   const [column, direction] = order.split('-')
   if (column in columns && ['asc', 'desc'].includes(direction)) return sorted.sort((a, b) => {
     const key = columns[column as keyof typeof columns]
