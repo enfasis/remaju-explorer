@@ -4,6 +4,8 @@ A Python collector for Peru's REMAJU judicial auction listings and a static web 
 
 Requires Docker Compose and Make:
 
+The web app uses Node.js 26 LTS in Docker and GitHub Actions. Local npm commands also require Node.js 26.
+
 ```sh
 make help       # list commands
 make build      # build collector and web images
