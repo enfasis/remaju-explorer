@@ -1,10 +1,12 @@
 name: Refresh data
 on:
+  schedule:
+    - cron: '0 8 * * *'
   workflow_dispatch:
     inputs:
       max_pages:
         description: Listing pages to collect (4 auctions each). Empty collects everything.
-        default: '5'
+        default: ''
         required: false
 permissions:
   contents: read
@@ -14,7 +16,7 @@ concurrency:
 jobs:
   refresh:
     if: ${{ github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     environment: production
     env:
@@ -35,8 +37,8 @@ jobs:
       run:
         working-directory: src/collector
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
       - run: uv sync --locked
       - name: Install AWS CLI v2
         working-directory: ${{ runner.temp }}

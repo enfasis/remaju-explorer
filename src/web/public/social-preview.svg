@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <pattern id="weave" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M0 40h10V30h10V20h10V10h20v10h10v10h10v10h10M0 40h10v10h10v10h10v10h20V60h10V50h10V40h10" fill="none" stroke="#1c1b19" stroke-opacity=".06" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <path fill="#f6f5f2" d="M0 0h1200v630H0z"/>
+  <path fill="url(#weave)" d="M0 0h1200v630H0z"/>
+  <path d="M0 0h300v12H0" fill="#d7263d"/>
+  <path d="M300 0h300v12H300" fill="#f5c518"/>
+  <path d="M600 0h300v12H600" fill="#178a5b"/>
+  <path d="M900 0h300v12H900" fill="#2d6cdf"/>
+  <g transform="translate(84 108) scale(2.2)">
+    <rect width="64" height="64" rx="18" fill="#fff"/>
+    <g transform="rotate(-42 32 29)" fill="#d7263d">
+      <rect x="28" y="24" width="8" height="27" rx="4"/>
+      <rect x="17" y="15" width="30" height="14" rx="4"/>
+      <rect x="14" y="12" width="7" height="20" rx="2"/>
+      <rect x="43" y="12" width="7" height="20" rx="2"/>
+    </g>
+    <path d="M17 52h30" fill="none" stroke="#1c1b19" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="51" cy="41" r="3" fill="#f5c518"/>
+  </g>
+  <g font-family="DejaVu Sans, sans-serif" fill="#1c1b19">
+    <text x="260" y="203" font-size="82" font-weight="bold" letter-spacing="-4">remaju<tspan font-size="34" baseline-shift="super" letter-spacing="-1">mm</tspan></text>
+    <text x="84" y="350" font-size="51" font-weight="bold" letter-spacing="-1">Remates judiciales del Perú</text>
+    <text x="84" y="413" font-size="28" fill="#5f5b55">Explora inmuebles, compara precios y ubícalos en el mapa.</text>
+    <text x="84" y="544" font-size="25" fill="#d7263d">remaju.mejora.me</text>
+    <text x="1116" y="544" font-size="19" text-anchor="end" fill="#5f5b55">Datos de REMAJU · Plataforma independiente</text>
+  </g>
+</svg>

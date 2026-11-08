@@ -77,7 +77,7 @@ def tracking_page(html: str) -> bool:
 
 
 def polite_pause() -> None:
-    time.sleep(1.3 + random.uniform(0, 0.5))
+    time.sleep(1 + random.uniform(0, 1))
 
 
 class RemajuSite:
@@ -136,6 +136,7 @@ class RemajuSite:
         self.exit = (url, click(name, button, parameters))
 
     def get(self, url: str, action: str) -> str:
+        self.pause()
         return self.trace.request(self.session, "GET", url, action)
 
     def post(self, url: str, interaction: AjaxInteraction) -> str:
