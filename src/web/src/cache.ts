@@ -92,7 +92,19 @@ export async function loadSnapshot(): Promise<Snapshot> {
 
 export async function loadDetail(idOrPath: string): Promise<AuctionDetail> {
   const manifest = await loadManifest()
-  if (manifest.schema_version === 1) return cleanDetail(await fetchJson<AuctionDetail>(idOrPath))
+  if (manifest.schema_version === 1) {
+    try {
+      return cleanDetail(await fetchJson<AuctionDetail>(idOrPath))
+    } catch (error) {
+      if (!(error instanceof HttpError) || error.status !== 404) throw error
+      const fresh = await fetchManifest(true)
+      if (fresh.schema_version !== 2) throw error
+      memory.set(manifestKey, Promise.resolve(fresh))
+      const number = idOrPath.match(/\/(\d+)\.json$/)?.[1]
+      if (!number) throw error
+      return loadDetail(`remaju:${number}`)
+    }
+  }
   const snapshot = await loadSnapshot()
   const available = snapshot.auctions.find(item => item.auction_id === idOrPath)
   if (available?.detail) return available.detail

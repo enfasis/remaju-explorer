@@ -9,8 +9,8 @@ on:
         default: ''
         required: false
       stop_window:
-        description: Experimental consecutive historical match size (e.g. 4). Early stops do not publish.
-        default: ''
+        description: Experimental consecutive historical match size. Empty checks all summaries; early stops do not publish.
+        default: '18'
         required: false
       refresh_all_details:
         description: Ignore cached details and refresh every auction.
@@ -31,8 +31,6 @@ jobs:
       MAX_PAGES: ${{ inputs.max_pages }}
       STOP_WINDOW: ${{ inputs.stop_window }}
       CACHE_MAX_AGE_HOURS: ${{ inputs.refresh_all_details && '0' || '168' }}
-      AWS_ACCESS_KEY_ID: ${{ vars.R2_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: auto
       AWS_ENDPOINT_URL: ${{ vars.R2_ENDPOINT }}
       AWS_REQUEST_CHECKSUM_CALCULATION: when_required
@@ -50,38 +48,16 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: astral-sh/setup-uv@v10.3.3
       - run: uv sync --locked
-      - name: Install AWS CLI v2
-        working-directory: ${{ runner.temp }}
-        run: |
-          curl -sSfLo awscli.zip https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
-          unzip -q awscli.zip && sudo ./aws/install --update
-          aws --version
       - name: Restore caches and previous state from R2
-        run: |
-          mkdir -p "$SITE/data" "$(dirname "$GEOCODING_CACHE")"
-          aws s3 cp "$PRIVATE/cache/" "$(dirname "$GEOCODING_CACHE")/" --recursive
-          if aws s3 cp "$DATA/manifest.json" "$SITE/manifest.json" 2>manifest-error.txt; then
-            test "$(jq -r '.schema_version' "$SITE/manifest.json")" = 2
-            test "$(jq -r '.history.path' "$SITE/manifest.json")" = history.json
-            test "$(jq -r '.ids.path' "$SITE/manifest.json")" = ids.txt
-            aws s3 cp "$DATA/history.json" "$SITE/history.json"
-            aws s3 cp "$DATA/ids.txt" "$SITE/ids.txt"
-          elif ! grep -Eq '404|NoSuchKey' manifest-error.txt; then
-            cat manifest-error.txt >&2
-            exit 1
-          elif aws s3 cp "$DATA/data/manifest.json" "$SITE/data/manifest.json" 2>manifest-error.txt; then
-            state=$(jq -r '.state.path' "$SITE/data/manifest.json")
-            [[ "$state" =~ ^/data/releases/[A-Za-z0-9_-]+/state.json$ ]]
-            aws s3 cp "$DATA$state" "$SITE$state"
-          elif ! grep -Eq '404|NoSuchKey' manifest-error.txt; then
-            cat manifest-error.txt >&2
-            exit 1
-          fi
+        env:
+          AWS_ACCESS_KEY_ID: ${{ vars.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: uv run --no-sync python storage.py restore --site "$SITE" --cache "$(dirname "$GEOCODING_CACHE")" --public "${DATA#s3://}" --private "${PRIVATE#s3://}"
       - name: Collect from REMAJU
         id: collect
         run: |
           set +e
-          uv run python main.py collect --mode live --output "$RUNS" --page-size 12 --cache-dir "$(dirname "$GEOCODING_CACHE")/collector" --baseline-dir "$SITE" --cache-max-age-hours "$CACHE_MAX_AGE_HOURS" ${MAX_PAGES:+--max-pages "$MAX_PAGES"} ${STOP_WINDOW:+--stop-window "$STOP_WINDOW"} | tee report.json
+          uv run --no-sync python main.py collect --mode live --output "$RUNS" --page-size 12 --cache-dir "$(dirname "$GEOCODING_CACHE")/collector" --baseline-dir "$SITE" --cache-max-age-hours "$CACHE_MAX_AGE_HOURS" ${MAX_PAGES:+--max-pages "$MAX_PAGES"} ${STOP_WINDOW:+--stop-window "$STOP_WINDOW"} | tee report.json
           code=${PIPESTATUS[0]}
           run_id=$(jq -er '.run_id | select(type == "string" and test("^[A-Za-z0-9_-]{1,80}$"))' report.json) || exit 4
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
@@ -95,18 +71,17 @@ jobs:
         if: ${{ steps.collect.outputs.publish == 'true' }}
         env:
           GEOCODING_API_KEY: ${{ secrets.GEOCODING_API_KEY }}
-        run: uv run python main.py process --run-dir "$RUNS/${{ steps.collect.outputs.run_id }}" --geocode --exchange --target "$SITE"
+        run: uv run --no-sync python main.py process --run-dir "$RUNS/${{ steps.collect.outputs.run_id }}" --geocode --exchange --target "$SITE"
       - name: Upload flat data files, then manifest
         if: ${{ steps.collect.outputs.publish == 'true' }}
-        run: |
-          for name in available.json history.json; do
-            aws s3 cp "$SITE/$name" "$DATA/$name" --content-type application/json --cache-control "public, max-age=0, must-revalidate"
-          done
-          aws s3 cp "$SITE/ids.txt" "$DATA/ids.txt" --content-type "text/plain; charset=utf-8" --cache-control "public, max-age=0, must-revalidate"
-          aws s3 cp "$SITE/manifest.json" "$DATA/manifest.json" --content-type application/json --cache-control "public, max-age=0, must-revalidate"
-          jq '{dataset_version, scope, count, history_count, generated_at}' "$SITE/manifest.json"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ vars.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: uv run --no-sync python storage.py publish --site "$SITE" --public "${DATA#s3://}"
       - name: Save caches and run trace to the private bucket
         if: ${{ always() && steps.collect.outputs.run_id != '' }}
-        run: |
-          test -d "$(dirname "$GEOCODING_CACHE")" && aws s3 cp "$(dirname "$GEOCODING_CACHE")/" "$PRIVATE/cache/" --recursive
-          aws s3 cp "$RUNS/${{ steps.collect.outputs.run_id }}" "$PRIVATE/runs/${{ steps.collect.outputs.run_id }}" --recursive --quiet
+        env:
+          AWS_ACCESS_KEY_ID: ${{ vars.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RUN_ID: ${{ steps.collect.outputs.run_id }}
+        run: uv run --no-sync python storage.py save --cache "$(dirname "$GEOCODING_CACHE")" --run "$RUNS/$RUN_ID" --private "${PRIVATE#s3://}"

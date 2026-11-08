@@ -3,6 +3,7 @@ import { parseAsString, useQueryStates } from 'nuqs'
 import { Input, Label, Switch } from 'tamagui'
 import { loadManifest, loadSnapshot } from '../cache'
 import AuctionCard from '../components/auction-card'
+import AuctionTable, { tableColumns } from '../components/auction-table'
 import type { MapFocus, MapPoint } from '../components/auction-map'
 import FilterSelect, { choices } from '../components/filter-select'
 import IconButton from '../components/icon-button'
@@ -14,13 +15,14 @@ import { useTitle } from '../use-title'
 
 const AuctionMap = lazy(() => import('../components/auction-map'))
 
-const parsers = { q: parseAsString.withDefault(''), department: parseAsString.withDefault(''), province: parseAsString.withDefault(''), district: parseAsString.withDefault(''), propertyType: parseAsString.withDefault(''), phase: parseAsString.withDefault(''), currency: parseAsString.withDefault('PEN'), minPrice: parseAsString.withDefault(''), maxPrice: parseAsString.withDefault(''), from: parseAsString.withDefault(''), to: parseAsString.withDefault(''), mapped: parseAsString.withDefault(''), sort: parseAsString.withDefault('date-desc') }
+const parsers = { q: parseAsString.withDefault(''), department: parseAsString.withDefault(''), province: parseAsString.withDefault(''), district: parseAsString.withDefault(''), propertyType: parseAsString.withDefault(''), phase: parseAsString.withDefault(''), currency: parseAsString.withDefault('PEN'), minPrice: parseAsString.withDefault(''), maxPrice: parseAsString.withDefault(''), from: parseAsString.withDefault(''), to: parseAsString.withDefault(''), mapped: parseAsString.withDefault(''), sort: parseAsString.withDefault('date-desc'), view: parseAsString.withDefault('') }
 
 const sorts = [
   { value: 'date-desc', label: 'Fecha: reciente primero' },
   { value: 'date-asc', label: 'Fecha: antigua primero' },
   { value: 'price-asc', label: 'Precio: menor primero' },
   { value: 'price-desc', label: 'Precio: mayor primero' },
+  ...tableColumns.filter(column => column.key !== 'date' && column.key !== 'price').flatMap(column => [{ value: `${column.key}-asc`, label: `${column.label}: ascendente` }, { value: `${column.key}-desc`, label: `${column.label}: descendente` }]),
 ]
 
 function DateField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
@@ -54,7 +56,7 @@ export default function Home() {
   const options = (key: Facet) => facetOptions(auctions, filters, rate, key)
   const update = (key: keyof Filters, value: string) => void setFilters({ [key]: value || null, ...(key === 'department' ? { province: null, district: null } : key === 'province' ? { district: null } : {}) }, { history: 'push' })
   const type = (key: keyof Filters, value: string) => void setFilters({ [key]: value || null }, { history: 'replace' })
-  const clear = () => void setFilters(Object.fromEntries(Object.keys(parsers).map(k => [k, null])), { history: 'push' })
+  const clear = () => void setFilters(Object.fromEntries(Object.keys(parsers).filter(key => key !== 'view').map(k => [k, null])), { history: 'push' })
   const select = (label: string, key: keyof Filters, values: string[]) => <FilterSelect label={label} value={filters[key]} options={choices(values)} onChange={value => update(key, value)} />
   const resultsLabel = `${results.length} resultados${manifest?.demo ? ' · Muestra parcial del 07/11/2026' : manifest?.scope === 'partial' ? ' · Muestra parcial' : ''}`
   return <>
@@ -83,12 +85,13 @@ export default function Home() {
       <div className="results-bar">
         <span role="status" aria-live="polite">{resultsLabel}</span>
         <div className="result-controls">
+          <Toggle label="Tabla" checked={filters.view === 'table'} onChange={checked => void setFilters({ view: checked ? 'table' : null }, { history: 'push' })} />
           <Toggle label="Mapa" checked={showMap} onChange={setShowMap} />
           <FilterSelect label="Ordenar por" value={filters.sort} options={sorts} onChange={value => update('sort', value || 'date-desc')} />
         </div>
       </div>
       <div className={showMap ? 'results-layout with-map' : 'results-layout'}>
-        <div>{error ? <div role="alert" className="message glass">{error} Todavía no hay una publicación disponible.</div> : !manifest ? <div className="message glass" role="status">Cargando datos…</div> : results.length === 0 ? <div className="message glass" role="status">No hay remates que coincidan con los filtros.</div> : <ul id="auction-list" className="list" aria-label="Lista de remates">{results.map((a, index) => <li key={a.auction_id} className="list-item" style={{ '--i': Math.min(index, 12) } as CSSProperties}>
+        <div>{error ? <div role="alert" className="message glass">{error} Todavía no hay una publicación disponible.</div> : !manifest ? <div className="message glass" role="status">Cargando datos…</div> : results.length === 0 ? <div className="message glass" role="status">No hay remates que coincidan con los filtros.</div> : filters.view === 'table' ? <AuctionTable auctions={results} currency={filters.currency} rate={rate} search={location.search} sort={filters.sort} onSort={value => update('sort', value)} onLocate={locate} /> : <ul id="auction-list" className="list" aria-label="Lista de remates">{results.map((a, index) => <li key={a.auction_id} className="list-item" style={{ '--i': Math.min(index, 12) } as CSSProperties}>
           <AuctionCard auction={a} currency={filters.currency} rate={rate} search={location.search} onLocate={a.coordinates?.length ? () => locate(a) : undefined} />
         </li>)}</ul>}</div>
         {showMap && <Suspense fallback={<p role="status">Cargando mapa…</p>}><AuctionMap points={points} focus={focus} /></Suspense>}

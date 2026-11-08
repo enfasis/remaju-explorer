@@ -38,3 +38,13 @@ def test_mismatched_order_files_disable_cache(tmp_path):
     cache = CollectionCache(tmp_path)
     assert cache.order == []
     assert cache.records == {}
+
+
+def test_eighteen_auction_stop_window():
+    history = [str(number) for number in range(100, 0, -1)]
+    window = ConsecutiveWindow(history, 18)
+    assert not window.observe("new")
+    for number in history[:17]:
+        assert not window.observe(number)
+    assert window.observe(history[17])
+    assert len(window.matched) == 18

@@ -22,6 +22,15 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('flat publication cache', () => {
+  it('recovers a cached legacy detail link after old objects are removed', async () => {
+    const legacy = { schema_version: 1, dataset_version: 'old', availability: { path: 'data/releases/old/availability.json' } }
+    const auction = { numero_remate: '123', list_data: {}, seguimiento: null, detail: { remate_tab: {}, inmuebles_tab: { inmuebles: [] }, cronograma_tab: { fases: [] } } }
+    const available = { dataset_version: 'v2', auctions: [auction] }
+    const modern = { schema_version: 2, dataset_version: 'v2', available: { path: 'available.json', sha256: await hash(available) } }
+    fetchMock.mockResolvedValueOnce(response(legacy)).mockResolvedValueOnce(new Response('', { status: 404 })).mockResolvedValueOnce(response(modern)).mockResolvedValueOnce(response(available))
+    const cache = await import('./cache')
+    expect((await cache.loadDetail('/data/releases/old/auctions/123.json')).numero_remate).toBe('123')
+  })
   it('reads full available records and opens details without another download', async () => {
     const auction = { numero_remate: '123', list_data: { descripcion: 'House', fase: 'Ofertas' }, seguimiento: null, detail: { remate_tab: { precio_base: '$ 10' }, inmuebles_tab: { departamento: 'LIMA', provincia: 'LIMA', distrito: 'LIMA', inmuebles: [] }, cronograma_tab: { fases: [] } } }
     const available = { dataset_version: 'v1', auctions: [auction] }

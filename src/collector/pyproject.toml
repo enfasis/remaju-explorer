@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "REMAJU auction collector"
 requires-python = ">=3.14"
 dependencies = [
+    "boto3==1.43.126",
     "clypi>=1.9.1",
     "pillow>=12.1.1",
     "pydantic>=2.12.5",

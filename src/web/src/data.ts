@@ -175,6 +175,15 @@ export function compareDecimal(left: string, right: string): number | null {
 
 export function orderAuctions(items: Summary[], order: string, currency?: string, rate: Rate | null = null): Summary[] {
   const sorted = sortAuctions(items)
+  const columns = { number: 'numero_remate', department: 'departamento', province: 'provincia', district: 'distrito', type: 'tipo_inmueble', phase: 'fase' } as const
+  const [column, direction] = order.split('-')
+  if (column in columns && ['asc', 'desc'].includes(direction)) return sorted.sort((a, b) => {
+    const key = columns[column as keyof typeof columns]
+    const left = column === 'phase' ? activePhase(a).fase : a[key]
+    const right = column === 'phase' ? activePhase(b).fase : b[key]
+    if (!left || !right) return left ? -1 : right ? 1 : 0
+    return left.localeCompare(right, 'es', { numeric: column === 'number', sensitivity: 'base' }) * (direction === 'desc' ? -1 : 1)
+  })
   if (order === 'date-asc') return sorted.sort((a, b) => {
     const left = a.offer_date ?? a.offer_at?.slice(0, 10) ?? ''
     const right = b.offer_date ?? b.offer_at?.slice(0, 10) ?? ''

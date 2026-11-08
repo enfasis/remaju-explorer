@@ -102,6 +102,21 @@ a { color: inherit; }
 .results-bar > span { font-size: .82rem; color: var(--muted); }
 .result-controls { display: flex; gap: 16px; align-items: center; }
 .result-controls .field { width: 220px; }
+.result-controls { flex-wrap: wrap; justify-content: flex-end; }
+.results-layout > div { min-width: 0; }
+.table-scroll { overflow: auto; max-width: 100%; border-radius: 16px; box-shadow: var(--shadow); }
+.auction-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .82rem; }
+.auction-table th, .auction-table td { padding: 12px 14px; border-bottom: 1px solid var(--hairline); vertical-align: middle; }
+.auction-table thead { background: var(--glass-strong); }
+.auction-table thead th { padding: 0; white-space: nowrap; }
+.auction-table thead button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px; background: none; border: 0; font: inherit; font-weight: 650; color: var(--muted); cursor: pointer; text-align: left; }
+.auction-table thead button:hover, .auction-table th[aria-sort="ascending"] button, .auction-table th[aria-sort="descending"] button { color: var(--accent); }
+.auction-table tbody tr:hover { background: var(--glass-strong); }
+.auction-table tbody tr:last-child > * { border-bottom: 0; }
+.auction-table .table-auction-link { color: var(--accent); font-weight: 650; white-space: nowrap; text-underline-offset: 3px; }
+.auction-table .table-price { white-space: nowrap; }
+.auction-table .badges { min-width: 175px; }
+.auction-table time { white-space: nowrap; }
 
 .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); align-items: start; gap: 12px; list-style: none; margin: 0; padding: 0; }
 .list-item { position: relative; }
