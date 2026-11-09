@@ -24,7 +24,7 @@ export default function AuctionTable({ auctions, currency, rate, search, sort, o
       <thead><tr>{tableColumns.map(column => {
         const ascending = sort === `${column.key}-asc`
         const descending = sort === `${column.key}-desc`
-        return <th key={column.key} scope="col" aria-sort={ascending ? 'ascending' : descending ? 'descending' : 'none'}>
+        return <th key={column.key} className={column.key === 'price' ? 'table-price' : undefined} scope="col" aria-sort={ascending ? 'ascending' : descending ? 'descending' : 'none'}>
           <button type="button" onClick={() => onSort(`${column.key}-${ascending ? 'desc' : 'asc'}`)} aria-label={`Ordenar por ${column.label.toLocaleLowerCase('es')}, ${ascending ? 'descendente' : 'ascendente'}`}>
             {column.label}<span aria-hidden="true">{ascending ? '↑' : descending ? '↓' : '↕'}</span>
           </button>

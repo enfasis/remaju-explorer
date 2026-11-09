@@ -8,6 +8,12 @@ const auctions = [{ auction_id: 'remaju:2', numero_remate: '2', departamento: 'L
 
 describe('auction table', () => {
   afterEach(() => vi.useRealTimers())
+  it('marks the numeric header for right alignment and shows exactly two decimal places', () => {
+    const items = ['10', '10.5', '10.12'].map((amount, index) => ({ ...auctions[0], auction_id: String(index), precio_base: { amount, currency: 'PEN', raw: `S/ ${amount}` } }))
+    const markup = renderToStaticMarkup(<MemoryRouter><AuctionTable auctions={items} currency="PEN" rate={null} search="" sort="price-asc" onSort={() => {}} onLocate={() => {}} /></MemoryRouter>)
+    expect(markup).toContain('class="table-price" scope="col" aria-sort="ascending"')
+    for (const price of ['10.00', '10.50', '10.12']) expect(markup).toContain(`<td class="table-price">S/ ${price}</td>`)
+  })
   const renderState = (state: { loading?: boolean; error?: string }) => renderToStaticMarkup(<MemoryRouter><AuctionTable auctions={[]} currency="PEN" rate={null} search="" sort="date-desc" onSort={() => {}} onLocate={() => {}} {...state} /></MemoryRouter>)
   it('keeps sortable headers while showing a spinner inside the loading table body', () => {
     const markup = renderState({ loading: true })
