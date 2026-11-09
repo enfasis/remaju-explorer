@@ -10,10 +10,10 @@ export function choices(values: string[], all = 'Todos'): Option[] {
 
 export default function FilterSelect({ label, value, options, onChange }: Props) {
   return <Select value={value} onValueChange={next => onChange(String(next ?? ''))} size="sm" zIndex={200000} renderValue={current => options.find(option => option.value === current)?.label ?? current}>
-    <Select.Trigger aria-label={label} className="field">
+    <div className="field-frame"><Select.Trigger aria-label={label} className="field">
       <Select.Value placeholder={label} className={value ? undefined : 'placeholder'} />
       <Select.Icon><ChevronIcon /></Select.Icon>
-    </Select.Trigger>
+    </Select.Trigger></div>
     <Select.Content>
       <Select.Viewport>
         <Select.Group>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareDecimal, convertedAmount, currentPhase, dataUrl, orderAuctions, parseMoney, phaseState, place, siteUrl, sortAuctions, type Summary } from './data'
+import { compareDecimal, convertedAmount, currentPhase, dataUrl, formatNumericDate, orderAuctions, parseMoney, phaseState, place, siteUrl, sortAuctions, type Summary } from './data'
 
 describe('display conversion', () => {
   const rate = { penToUsd: '0.25', date: '2026-11-07', source: 'fixture' }
@@ -40,6 +40,11 @@ describe('decimal comparison', () => {
 })
 
 describe('date ordering', () => {
+  it('formats phase dates as dd/mm/yyyy without shifting midnight in Peru', () => {
+    expect(formatNumericDate('2026-01-05 00:00:00')).toBe('05/01/2026')
+    expect(formatNumericDate('2026-11-16 23:59:59')).toBe('16/11/2026')
+    expect(formatNumericDate('invalid')).toBe('invalid')
+  })
   it('sorts source dates descending and unknown dates last', () => {
     const auctions = [{ auction_id: 'remaju:3', offer_date: null }, { auction_id: 'remaju:1', offer_date: '2026-01-01' }, { auction_id: 'remaju:2', offer_date: '2026-02-01' }] as Summary[]
     expect(sortAuctions(auctions).map(a => a.auction_id)).toEqual(['remaju:2', 'remaju:1', 'remaju:3'])

@@ -4,6 +4,7 @@ import { loadDetail, loadSnapshot } from '../../cache'
 import { Prices } from '../../components/prices'
 import { AuctionBadges } from '../../components/badges'
 import IconButton from '../../components/icon-button'
+import Spinner from '../../components/spinner'
 import { CloseIcon } from '../../components/icons'
 import { currentPhase, displayMoney, formatDateTime, parseMoney, phaseState, place, titleCase, type AuctionDetail as Detail, type Rate } from '../../data'
 import { useRate } from '../../use-rate'
@@ -78,7 +79,7 @@ export default function AuctionDetail() {
   const phase = currentPhase(detail?.cronograma || [])
   return <article className="detail" aria-busy={!detail && !error} aria-labelledby="detail-title">
 
-    {error ? <p role="alert" className="message glass">{error}</p> : !detail ? <p role="status" className="message glass">Cargando detalle…</p> : <>
+    {error ? <p role="alert" className="message">{error}</p> : !detail ? <Spinner label="Cargando detalle…" /> : <>
       <header className="detail-hero reveal" style={{ '--i': 0 } as CSSProperties}>
         <div className="hero-top">
           <p className="eyebrow">Remate N.º {detail.numero_remate}</p>
@@ -105,7 +106,7 @@ export default function AuctionDetail() {
           <h4>Dirección</h4><p className="legal-text">{property.direccion}</p>
           {property.carga_gravamen && <><h4>Cargas y gravámenes</h4><p className="legal-text">{property.carga_gravamen}</p></>}
         </article>)}
-        {points.length > 0 && <Suspense fallback={<p role="status">Cargando mapa…</p>}><AuctionMap points={points} /></Suspense>}
+        {points.length > 0 && <Suspense fallback={<Spinner label="Cargando mapa…" />}><AuctionMap points={points} /></Suspense>}
       </Section>
       <Section index={5} title="Proceso judicial"><Fields fields={caseFields} values={{ ...detail.remate, ...(detail.seguimiento?.expediente || {}) }} /></Section>
       {detail.seguimiento && detail.seguimiento.eventos.length > 0 && <Section index={6} title="Seguimiento">

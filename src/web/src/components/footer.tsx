@@ -1,12 +1,12 @@
 import { Link } from 'react-router'
 import { siteUrl } from '../data'
+import Brand from './brand'
 
 export default function Footer() {
   return <footer className="footer" role="contentinfo">
-    <div className="weave" aria-hidden="true" />
     <div className="wrap footer-inner">
       <div className="footer-brand">
-        <Link className="brand" to="/" aria-label="remaju mm, ir al inicio">remaju<sup aria-hidden="true">mm</sup></Link>
+        <Brand />
         <p>Remates judiciales del Perú, más fáciles de explorar.</p>
       </div>
       <nav aria-label="Enlaces del sitio">

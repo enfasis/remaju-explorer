@@ -203,6 +203,11 @@ export function formatShortDate(value: string): string {
   return Number.isNaN(time) ? value : new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short', timeZone: 'America/Lima' }).format(time).replace('.', '')
 }
 
+export function formatNumericDate(value: string): string {
+  const time = limaTime(value)
+  return Number.isNaN(time) ? value : new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Lima' }).format(time)
+}
+
 export function activePhase(summary: Pick<Summary, 'fase' | 'cronograma'>, now = Date.now()): { fase: string | null; until: string | null } {
   const phase = currentPhase(summary.cronograma || [], now)
   return phase ? { fase: phase.fase, until: phase.fecha_fin } : { fase: summary.fase, until: null }

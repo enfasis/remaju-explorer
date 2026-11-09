@@ -8,6 +8,26 @@ const auctions = [{ auction_id: 'remaju:2', numero_remate: '2', departamento: 'L
 
 describe('auction table', () => {
   afterEach(() => vi.useRealTimers())
+  const renderState = (state: { loading?: boolean; error?: string }) => renderToStaticMarkup(<MemoryRouter><AuctionTable auctions={[]} currency="PEN" rate={null} search="" sort="date-desc" onSort={() => {}} onLocate={() => {}} {...state} /></MemoryRouter>)
+  it('keeps sortable headers while showing a spinner inside the loading table body', () => {
+    const markup = renderState({ loading: true })
+    expect(markup).toContain('Ordenar por fecha, ascendente')
+    expect(markup).toContain('aria-sort="descending"')
+    expect(markup).toContain('<tbody aria-busy="true"><tr><td colSpan="9"')
+    expect(markup).toContain('class="spinner" aria-hidden="true"')
+    expect(markup).toContain('role="status"')
+    expect(markup).not.toContain('No hay remates')
+  })
+  it('keeps the headers and announces empty and error states without a spinner', () => {
+    const empty = renderState({})
+    const error = renderState({ error: 'Error de conexión.' })
+    expect(empty).toContain('<thead>')
+    expect(empty).toContain('No hay remates que coincidan con los filtros.')
+    expect(error).toContain('<thead>')
+    expect(error).toContain('role="alert"')
+    expect(error).toContain('Error de conexión.')
+    expect(empty + error).not.toContain('class="spinner"')
+  })
   it('sorts auction numbers numerically in both directions', () => {
     expect(orderAuctions(auctions, 'number-asc').map(a => a.numero_remate)).toEqual(['2', '10'])
     expect(orderAuctions(auctions, 'number-desc').map(a => a.numero_remate)).toEqual(['10', '2'])
@@ -45,8 +65,8 @@ describe('auction table', () => {
     expect(markup).toContain('>Fecha<')
     expect(markup).not.toContain('Fecha de ofertas')
     expect(markup).toContain('dateTime="2026-11-16T23:59:59-05:00"')
-    expect(markup).toContain('16 nov')
-    expect(markup).not.toContain('20 dic')
+    expect(markup).toContain('>16/11/2026</time>')
+    expect(markup).not.toContain('>20/12/2026</time>')
     expect(orderAuctions(items, 'date-asc').map(a => a.auction_id)).toEqual(['remaju:2', 'remaju:10', 'missing'])
     expect(orderAuctions(items, 'date-desc').map(a => a.auction_id)).toEqual(['remaju:10', 'remaju:2', 'missing'])
     vi.setSystemTime(new Date('2026-11-17T00:00:00-05:00'))

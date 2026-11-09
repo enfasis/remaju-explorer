@@ -1,9 +1,33 @@
 import { renderToStaticMarkup } from 'react-dom/server'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import { AuctionBadges } from './components/badges'
 import { Prices } from './components/prices'
+import Brand from './components/brand'
+import Footer from './components/footer'
+import Spinner from './components/spinner'
 
 describe('original auction presentation', () => {
+  it('announces reusable loading indicators with a hidden decorative spinner', () => {
+    const markup = renderToStaticMarkup(<Spinner label="Cargando publicación…" />)
+    expect(markup).toContain('role="status"')
+    expect(markup).toContain('class="spinner" aria-hidden="true"')
+    expect(markup).toContain('Cargando publicación…')
+  })
+  it('keeps the integrated footer navigation and source disclaimer', () => {
+    const markup = renderToStaticMarkup(<MemoryRouter><Footer /></MemoryRouter>)
+    expect(markup).toContain('role="contentinfo"')
+    expect(markup).toContain('href="/downloads"')
+    expect(markup).toContain('no afiliada al Poder Judicial')
+    expect(markup).not.toContain('class="weave"')
+  })
+  it('shares the multicolor wordmark with an accessible home link and separate mm', () => {
+    const markup = renderToStaticMarkup(<MemoryRouter><Brand /></MemoryRouter>)
+    expect(markup).toContain('aria-label="remaju mm, ir al inicio"')
+    expect(markup).toContain('class="brand-word"')
+    expect(markup).toContain('<span>r</span><span>e</span><span>m</span><span>a</span><span>j</span><span>u</span>')
+    expect(markup).toContain('<sup aria-hidden="true">mm</sup>')
+  })
   it('preserves the colorful property, phase, status and convocatoria badges', () => {
     const markup = renderToStaticMarkup(<AuctionBadges kind="CASA" phase="Inscripción" status="En proceso" call="Primera convocatoria" />)
     for (const color of ['yellow', 'blue', 'green', 'red']) expect(markup).toContain(`badge-${color}`)

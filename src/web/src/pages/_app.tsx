@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, Outlet, ScrollRestoration } from 'react-router'
+import { Outlet, ScrollRestoration } from 'react-router'
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v7'
 import { TamaguiProvider } from 'tamagui'
 import Footer from '../components/footer'
+import Brand from '../components/brand'
 import Glossary from '../components/glossary'
 import IconButton from '../components/icon-button'
 import { GitHubIcon, MoonIcon, SunIcon } from '../components/icons'
@@ -23,6 +24,10 @@ function ExchangeRate() {
 export default function App() {
   const [dark, setDark] = useState(initialDark)
   useEffect(() => {
+    const positions = { x1: 10 + Math.random() * 30, y1: 10 + Math.random() * 30, x2: 60 + Math.random() * 30, y2: 60 + Math.random() * 30 }
+    for (const [key, value] of Object.entries(positions)) document.documentElement.style.setProperty(`--pattern-${key}`, `${value}%`)
+  }, [])
+  useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light'
     localStorage.setItem('theme', dark ? 'dark' : 'light')
   }, [dark])
@@ -32,7 +37,7 @@ export default function App() {
       <header className="header" role="banner">
         <nav className="wrap header-inner" aria-label="Principal">
           <ExchangeRate />
-          <Link className="brand" to="/" aria-label="remaju mm, ir al inicio">remaju<sup aria-hidden="true">mm</sup></Link>
+          <Brand />
           <div className="header-actions" role="toolbar" aria-label="Preferencias y enlaces">
             <IconButton label={dark ? 'Activar modo claro' : 'Activar modo oscuro'} icon={dark ? <SunIcon /> : <MoonIcon />} onPress={() => setDark(!dark)} />
             <Glossary />
