@@ -20,7 +20,7 @@ export default function Glossary() {
   return <Dialog modal open={open} onOpenChange={setOpen}>
     <IconButton label="Abrir glosario" icon={<HelpIcon />} haspopup="dialog" onPress={() => setOpen(true)} />
     <Dialog.Portal>
-      <Dialog.Overlay key="overlay" className="dialog-overlay" bg="rgba(28, 24, 20, 0.42)" opacity="1 enter:0 exit:0" transition="quick" />
+      <Dialog.Overlay key="overlay" className="dialog-overlay" bg="rgba(17, 24, 39, 0.28)" opacity="1 enter:0 exit:0" transition="quick" />
       <Dialog.Content key="content" className="dialog-content" bg="transparent" borderWidth={0} p="0" boxShadow="none" opacity="1 enter:0 exit:0" y="0 enter:12px exit:8px" scale="1 enter:0.98 exit:0.98" transition="quick">
         <div className="dialog-panel">
           <div className="dialog-heading">
@@ -29,7 +29,7 @@ export default function Glossary() {
           </div>
           <Dialog.Description className="muted">Términos frecuentes en los remates judiciales del Perú. No reemplaza las bases del remate ni la asesoría legal.</Dialog.Description>
           <dl className="glossary">{terms.map(([term, description]) => <div key={term}><dt>{term}</dt><dd>{description}</dd></div>)}</dl>
-          <a href="https://remaju.pj.gob.pe/doc/remaju_manual_postor.pdf" target="_blank" rel="noreferrer">Manual oficial para postores<span className="sr-only"> (abre en otra pestaña)</span></a>
+          <a className="guide-manual" href="https://remaju.pj.gob.pe/doc/remaju_manual_postor.pdf" target="_blank" rel="noreferrer">Manual oficial para postores<span className="sr-only"> (abre en otra pestaña)</span></a>
         </div>
       </Dialog.Content>
     </Dialog.Portal>

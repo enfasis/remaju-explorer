@@ -45,4 +45,12 @@ describe('explorer surfaces', () => {
     expect(rule('.filters input.field::placeholder, .results-bar input.field::placeholder')).toContain('font-size: .8rem')
     expect(rule('.field-frame .field')).not.toContain('font-size:')
   })
+
+  it('matches the guide to the page with a background-free close icon and an underlined manual link', () => {
+    expect(rule('.dialog-panel')).toContain('background: var(--field)')
+    expect(rule('.dialog-panel .dialog-heading .icon-button')).toContain('background: transparent')
+    expect(rule('.dialog-panel .dialog-heading .icon-button')).toContain('backdrop-filter: none')
+    expect(rule('.guide-manual')).toContain('text-decoration: underline')
+    expect(rule('.guide-manual')).toContain('color: var(--icon-blue)')
+  })
 })
