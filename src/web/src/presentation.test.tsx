@@ -30,7 +30,8 @@ describe('original auction presentation', () => {
   })
   it('preserves the colorful property, phase, status and convocatoria badges', () => {
     const markup = renderToStaticMarkup(<AuctionBadges kind="CASA" phase="Inscripción" status="En proceso" call="Primera convocatoria" />)
-    for (const color of ['yellow', 'blue', 'green', 'red']) expect(markup).toContain(`badge-${color}`)
+    for (const color of ['blue', 'green', 'red']) expect(markup).toContain(`badge-${color}`)
+    expect(markup).not.toContain('badge-yellow')
     expect(markup).toContain('Casa')
     expect(markup).toContain('Inscripción')
     expect(markup).toContain('En proceso')

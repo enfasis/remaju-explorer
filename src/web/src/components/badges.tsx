@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { formatShortDate, titleCase } from '../data'
 
-export type Tone = 'red' | 'green' | 'yellow' | 'blue'
+export type Tone = 'red' | 'green' | 'blue'
 
 export function Badge({ tone, label, children }: { tone: Tone; label: string; children: ReactNode }) {
   return <li className={`badge badge-${tone}`}><span className="sr-only">{label}: </span>{children}</li>
@@ -16,7 +16,7 @@ type Props = { phase?: string | null; until?: string | null; status?: string | n
 export function AuctionBadges({ phase, until, status, kind, call, label = 'Estado del remate' }: Props) {
   if (!phase && !status && !kind && !call) return null
   return <ul className="badges" aria-label={label}>
-    {kind && <Badge tone="yellow" label="Tipo de inmueble">{titleCase(kind)}</Badge>}
+    {kind && <Badge tone="green" label="Tipo de inmueble">{titleCase(kind)}</Badge>}
     {phase && <Badge tone="blue" label="Fase actual">{phase}</Badge>}
     {phase && until && <li className="badge-until">hasta {formatShortDate(until)}</li>}
     {status && <Badge tone={statusTone(status)} label="Estado">{status}</Badge>}
