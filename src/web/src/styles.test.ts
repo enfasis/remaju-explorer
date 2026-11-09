@@ -4,9 +4,10 @@ import { readFileSync } from 'node:fs'
 const styles = readFileSync(new URL('./styles.css', import.meta.url), 'utf8')
 
 function rule(selector: string): string {
-  const start = styles.indexOf(`${selector} {`)
-  if (start < 0) throw new Error(`Missing style rule: ${selector}`)
-  return styles.slice(start, styles.indexOf('}', start) + 1)
+  for (const match of styles.matchAll(/(?:^|\n)\s*([^{}\n]+)\{([^{}]*)\}/g)) {
+    if (match[1].trim() === selector) return `${selector} {${match[2]}}`
+  }
+  throw new Error(`Missing style rule: ${selector}`)
 }
 
 describe('explorer surfaces', () => {
@@ -47,6 +48,15 @@ describe('explorer surfaces', () => {
     expect(rule('.field .placeholder')).toContain('font-size: .8rem')
     expect(rule('.filters input.field::placeholder, .results-bar input.field::placeholder')).toContain('font-size: .8rem')
     expect(rule('.field-frame .field')).not.toContain('font-size:')
+  })
+
+  it('removes the component inset shadow and keeps unfocused icons light', () => {
+    expect(rule('.field-frame .field')).toContain('box-shadow: none')
+    const states = rule('.filters .field-frame .field, .filters .field-frame .field:hover, .filters .field-frame .field:focus')
+    expect(states).toContain('border: 0')
+    expect(states).toContain('box-shadow: none')
+    expect(rule('.icon-button')).toContain('color: var(--control-icon)')
+    expect(rule('.field svg')).toContain('color: var(--control-icon)')
   })
 
   it('matches the guide to the page with a background-free close icon and an underlined manual link', () => {

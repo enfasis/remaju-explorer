@@ -6,8 +6,12 @@ import { Prices } from './components/prices'
 import Brand from './components/brand'
 import Footer from './components/footer'
 import Spinner from './components/spinner'
+import { PinIcon } from './components/icons'
 
 describe('original auction presentation', () => {
+  it('uses lighter strokes for interface icons', () => {
+    expect(renderToStaticMarkup(<PinIcon />)).toContain('stroke-width="1.5"')
+  })
   it('announces reusable loading indicators with a hidden decorative spinner', () => {
     const markup = renderToStaticMarkup(<Spinner label="Cargando publicación…" />)
     expect(markup).toContain('role="status"')
