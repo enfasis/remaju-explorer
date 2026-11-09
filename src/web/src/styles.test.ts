@@ -16,8 +16,8 @@ describe('explorer surfaces', () => {
     expect(styles).not.toContain('.header { background: var(--base)')
   })
 
-  it('keeps the pattern visible at eight percent without dimming the source SVG again', () => {
-    expect(rule('body::before')).toContain('opacity: .08')
+  it('uses the requested pattern opacity without dimming the source SVG again', () => {
+    expect(rule('body::before')).toContain('opacity: .025')
     expect(rule('body::before')).toContain('#000 0 15%, transparent 75%')
     expect(rule('body::before')).toContain('--pattern-x1')
     expect(rule('body::before')).toContain('--pattern-x2')
@@ -25,12 +25,15 @@ describe('explorer surfaces', () => {
   })
 
   it('uses white controls, neutral text and borders, with a focus-only field ring', () => {
+    expect(rule(':root')).toContain('--base: #fff')
+    expect(rule(':root')).toContain('--radius: 4px')
     expect(rule(':root')).toContain('--field: #fff')
     expect(rule(':root')).toContain('--control-text: #374151')
-    expect(rule(':root')).toContain('--control-border: #d1d5db')
-    expect(rule('.field-frame')).toContain('border: 1px solid var(--control-border)')
+    expect(rule(':root')).toContain('--control-border: #e5e7eb')
+    expect(rule('.field-frame')).toContain('border: .5px solid var(--control-border)')
     expect(rule('.field-frame:focus-within')).toContain('border-color: var(--icon-blue)')
     expect(rule('.auction-table thead th')).toContain('background: var(--field)')
+    expect(rule('.auction-table thead th')).toContain('border-top: .5px solid var(--control-border)')
     expect(rule('.auction-table thead th')).not.toContain('border-left:')
     expect(rule('.auction-table thead th')).not.toContain('border-right:')
   })
