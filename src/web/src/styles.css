@@ -9,7 +9,7 @@
   --base: #fff;
   --text: #1c1b19;
   --muted: #5f5b55;
-  --placeholder: #374151;
+  --placeholder: #6b7280;
   --control-text: #374151;
   --control-border: #e5e7eb;
   --accent: var(--red);
@@ -38,7 +38,7 @@
   --base: #141517;
   --text: #f3f2ef;
   --muted: #a9a7a2;
-  --placeholder: #cbd5e1;
+  --placeholder: #9ca3af;
   --control-text: #e5e7eb;
   --control-border: #4b5563;
   --accent: #f06a7d;
@@ -118,12 +118,12 @@ a { color: inherit; }
 .filters { padding: 0; }
 .filter-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(max-content, 1fr); gap: 8px; margin: 0; }
 .filter-grid .search { grid-column: span 2; }
-.field-frame { display: block; position: relative; min-width: 0; border: .5px solid var(--control-border); border-radius: var(--radius); background: var(--field); }
-.field-frame:focus-within { border-color: var(--icon-blue); outline: 2px solid color-mix(in srgb, var(--icon-blue) 20%, transparent); outline-offset: 1px; }
+.field-frame { display: block; position: relative; min-width: 0; border: 0; border-radius: var(--radius); background: var(--field); }
+.field-frame:focus-within { outline: 2px solid color-mix(in srgb, var(--icon-blue) 20%, transparent); outline-offset: 1px; }
 .field-frame .field { width: 100%; min-width: 0; background: transparent; border: 0; border-radius: var(--radius); color: var(--control-text); }
 .field-frame .field:focus { outline: none; }
-.field .placeholder { color: var(--placeholder); font-weight: 300; background: transparent; }
-.filters input.field::placeholder, .results-bar input.field::placeholder { color: var(--placeholder); font-weight: 300; background: transparent; opacity: 1; }
+.field .placeholder { color: var(--placeholder); font-size: .8rem; font-weight: 300; background: transparent; }
+.filters input.field::placeholder, .results-bar input.field::placeholder { color: var(--placeholder); font-size: .8rem; font-weight: 300; background: transparent; opacity: 1; }
 .field svg { color: var(--control-text); }
 .field-frame:focus-within .field svg { color: var(--icon-blue); }
 .filter-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-right: 2px; }

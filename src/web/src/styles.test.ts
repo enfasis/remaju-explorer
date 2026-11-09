@@ -24,17 +24,25 @@ describe('explorer surfaces', () => {
     expect(styles).not.toContain("%3Cg opacity=")
   })
 
-  it('uses white controls, neutral text and borders, with a focus-only field ring', () => {
+  it('uses borderless white controls and neutral table borders, with a focus-only field ring', () => {
     expect(rule(':root')).toContain('--base: #fff')
     expect(rule(':root')).toContain('--radius: 4px')
     expect(rule(':root')).toContain('--field: #fff')
     expect(rule(':root')).toContain('--control-text: #374151')
     expect(rule(':root')).toContain('--control-border: #e5e7eb')
-    expect(rule('.field-frame')).toContain('border: .5px solid var(--control-border)')
-    expect(rule('.field-frame:focus-within')).toContain('border-color: var(--icon-blue)')
+    expect(rule('.field-frame')).toContain('border: 0')
+    expect(rule('.field-frame:focus-within')).toContain('outline: 2px solid color-mix(in srgb, var(--icon-blue) 20%, transparent)')
     expect(rule('.auction-table thead th')).toContain('background: var(--field)')
     expect(rule('.auction-table thead th')).toContain('border-top: .5px solid var(--control-border)')
     expect(rule('.auction-table thead th')).not.toContain('border-left:')
     expect(rule('.auction-table thead th')).not.toContain('border-right:')
+  })
+
+  it('uses smaller muted placeholders without shrinking entered text', () => {
+    expect(rule(':root')).toContain('--placeholder: #6b7280')
+    expect(rule(':root[data-theme="dark"]')).toContain('--placeholder: #9ca3af')
+    expect(rule('.field .placeholder')).toContain('font-size: .8rem')
+    expect(rule('.filters input.field::placeholder, .results-bar input.field::placeholder')).toContain('font-size: .8rem')
+    expect(rule('.field-frame .field')).not.toContain('font-size:')
   })
 })
