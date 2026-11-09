@@ -40,7 +40,7 @@ export default function AuctionTable({ auctions, currency, rate, search, sort, o
           <td>{titleCase(auction.distrito) || '—'}</td>
           <td>{titleCase(auction.tipo_inmueble) || '—'}</td>
           <td className="table-price">{displayMoney(auction.precio_base, currency, rate)}</td>
-          <td>{phase.fase || '—'}</td>
+          <td><span className="table-phase" title={phase.fase || undefined}>{phase.fase || '—'}</span></td>
           <td>{date ? <time dateTime={date.replace(' ', 'T') + '-05:00'} title={`Fin de ${phase.fase}: ${formatDateTime(date)}`}>{formatNumericDate(date)}</time> : '—'}</td>
           <td className="table-map-action">{Boolean(auction.coordinates?.length) && <IconButton label={`Ver remate ${auction.numero_remate} en el mapa`} icon={<PinIcon />} controls="auction-map" onPress={() => onLocate(auction)} />}</td>
         </tr>

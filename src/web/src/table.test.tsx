@@ -57,7 +57,7 @@ describe('auction table', () => {
     expect(markup).not.toContain('N.º')
     expect(markup).not.toContain('En proceso')
     expect(markup).not.toContain('class="badge')
-    expect(markup).toContain('>Ofertas</td>')
+    expect(markup).toContain('class="table-phase" title="Ofertas">Ofertas</span>')
   })
   it('shows and sorts the current phase end, not the offers date, including at the Lima boundary', () => {
     vi.useFakeTimers()
