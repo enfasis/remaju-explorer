@@ -1,12 +1,12 @@
-import { lazy, Suspense, useEffect, useId, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { parseAsString, useQueryStates } from 'nuqs'
-import { Input, Label, Switch } from 'tamagui'
+import { Input } from 'tamagui'
 import { loadManifest, loadSnapshot } from '../cache'
 import AuctionTable, { tableColumns } from '../components/auction-table'
 import type { MapFocus, MapPoint } from '../components/auction-map'
 import FilterSelect, { choices } from '../components/filter-select'
 import IconButton from '../components/icon-button'
-import { ClearFiltersIcon } from '../components/icons'
+import { ClearFiltersIcon, DollarIcon, MapIcon, PinIcon } from '../components/icons'
 import { orderAuctions, type Manifest, type Summary } from '../data'
 import { facetOptions, matches, type Facet, type Filters } from '../filters'
 import { useRate } from '../use-rate'
@@ -27,16 +27,6 @@ const sorts = [
 function DateField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   const [focused, setFocused] = useState(false)
   return <Input size="sm" className="field" type={value || focused ? 'date' : 'text'} placeholder={label} aria-label={label} value={value} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} onChangeText={onChange} />
-}
-
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
-  const id = useId()
-  return <div className="toggle">
-    <Label htmlFor={id} size="sm">{label}</Label>
-    <Switch id={id} size="sm" checked={checked} onCheckedChange={onChange} aria-label={label}>
-      <Switch.Thumb transition="quick" />
-    </Switch>
-  </div>
 }
 
 export default function Home() {
@@ -73,8 +63,7 @@ export default function Home() {
         <DateField label="Ofertas desde" value={filters.from} onChange={value => type('from', value)} />
         <DateField label="Ofertas hasta" value={filters.to} onChange={value => type('to', value)} />
         <div className="filter-actions">
-          <Toggle label="Con mapa" checked={filters.mapped === '1'} onChange={checked => update('mapped', checked ? '1' : '')} />
-          <Toggle label="USD" checked={filters.currency === 'USD'} onChange={checked => update('currency', checked ? 'USD' : '')} />
+          <IconButton label="Solo remates con ubicación en el mapa" icon={<PinIcon />} pressed={filters.mapped === '1'} onPress={() => update('mapped', filters.mapped === '1' ? '' : '1')} />
           <IconButton label="Limpiar filtros" icon={<ClearFiltersIcon />} controls="auction-list" onPress={clear} />
         </div>
       </form>
@@ -84,7 +73,8 @@ export default function Home() {
       <div className="results-bar">
         <span role="status" aria-live="polite">{resultsLabel}</span>
         <div className="result-controls">
-          <Toggle label="Mapa" checked={showMap} onChange={setShowMap} />
+          <IconButton label="Mostrar mapa" icon={<MapIcon />} pressed={showMap} controls="auction-map" onPress={() => setShowMap(!showMap)} />
+          <IconButton label="Mostrar precios en USD" icon={<DollarIcon />} pressed={filters.currency === 'USD'} controls="auction-list" onPress={() => update('currency', filters.currency === 'USD' ? '' : 'USD')} />
           <FilterSelect label="Ordenar por" value={filters.sort} options={sorts} onChange={value => update('sort', value || 'date-desc')} />
         </div>
       </div>

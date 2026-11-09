@@ -13,7 +13,10 @@ const { themes, colorTokens } = createPaletteThemes({
   blue: ['#eff5ff', '#dbe8fe', '#bfd6fe', '#93bbfd', '#609afa', '#3b7cf4', chavin.blue, '#2357c2', '#22489d', '#21407c', '#18284b'],
 })
 
-export const config = createTamagui({ ...createV6Config({ themes, colorTokens }), animations: animationsCSS })
+const base = createV6Config({ themes, colorTokens })
+const family = 'Inter, system-ui, sans-serif'
+
+export const config = createTamagui({ ...base, fonts: { body: { ...base.fonts.body, family }, heading: { ...base.fonts.heading, family } }, animations: animationsCSS })
 
 type AppConfig = typeof config
 

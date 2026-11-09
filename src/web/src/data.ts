@@ -184,10 +184,10 @@ export function orderAuctions(items: Summary[], order: string, currency?: string
     if (!left || !right) return left ? -1 : right ? 1 : 0
     return left.localeCompare(right, 'es', { numeric: column === 'number', sensitivity: 'base' }) * (direction === 'desc' ? -1 : 1)
   })
-  if (order === 'date-asc') return sorted.sort((a, b) => {
-    const left = a.offer_date ?? a.offer_at?.slice(0, 10) ?? ''
-    const right = b.offer_date ?? b.offer_at?.slice(0, 10) ?? ''
-    return !left ? (right ? 1 : 0) : !right ? -1 : left.localeCompare(right)
+  if (order === 'date-asc' || order === 'date-desc') return sorted.sort((a, b) => {
+    const left = activePhase(a).until
+    const right = activePhase(b).until
+    return !left ? (right ? 1 : 0) : !right ? -1 : left.localeCompare(right) * (order === 'date-desc' ? -1 : 1)
   })
   if (order === 'price-asc' || order === 'price-desc') return sorted.sort((a, b) => {
     const left = currency ? convertedAmount(a.precio_base, currency, rate) : a.precio_base?.amount

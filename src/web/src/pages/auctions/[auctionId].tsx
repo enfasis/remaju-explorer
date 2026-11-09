@@ -17,7 +17,7 @@ const trackingFields: [string, string][] = [['nro_convocatoria', 'Convocatoria']
 
 function Section({ index, title, children }: { index: number; title: string; children: ReactNode }) {
   const id = `section-${title.toLocaleLowerCase('es').replace(/\W+/g, '-')}`
-  return <section className="detail-section glass reveal" style={{ '--i': index } as CSSProperties} aria-labelledby={id}>
+  return <section className="detail-section reveal" style={{ '--i': index } as CSSProperties} aria-labelledby={id}>
     <h2 id={id}>{title}</h2>
     {children}
   </section>
@@ -79,7 +79,7 @@ export default function AuctionDetail() {
   return <article className="detail" aria-busy={!detail && !error} aria-labelledby="detail-title">
 
     {error ? <p role="alert" className="message glass">{error}</p> : !detail ? <p role="status" className="message glass">Cargando detalle…</p> : <>
-      <header className="detail-hero glass reveal" style={{ '--i': 0 } as CSSProperties}>
+      <header className="detail-hero reveal" style={{ '--i': 0 } as CSSProperties}>
         <div className="hero-top">
           <p className="eyebrow">Remate N.º {detail.numero_remate}</p>
           <IconButton label="Cerrar y volver a los resultados (Esc)" icon={<CloseIcon />} onPress={close} />
