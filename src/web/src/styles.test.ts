@@ -25,7 +25,7 @@ describe('explorer surfaces', () => {
     expect(styles).not.toContain("%3Cg opacity=")
   })
 
-  it('matches the borderless white table headers to the controls, with a focus-only field ring', () => {
+  it('matches white headers to borderless controls while retaining a subtle outer header border', () => {
     expect(rule(':root')).toContain('--base: #fff')
     expect(rule(':root')).toContain('--radius: 4px')
     expect(rule(':root')).toContain('--field: #fff')
@@ -34,7 +34,10 @@ describe('explorer surfaces', () => {
     expect(rule('.field-frame')).toContain('border: 0')
     expect(rule('.field-frame:focus-within')).toContain('outline: 2px solid color-mix(in srgb, var(--icon-blue) 20%, transparent)')
     expect(rule('.auction-table thead th')).toContain('background: var(--field)')
-    expect(rule('.auction-table thead th')).toContain('border: 0')
+    expect(rule('.auction-table thead th')).toContain('border-top: .5px solid var(--control-border)')
+    expect(rule('.auction-table thead th')).toContain('border-bottom: .5px solid var(--control-border)')
+    expect(rule('.auction-table thead th:first-child')).toContain('border-left: .5px solid var(--control-border)')
+    expect(rule('.auction-table thead th:last-child')).toContain('border-right: .5px solid var(--control-border)')
     expect(rule('.auction-table thead')).toContain('font-size: .8rem')
     expect(rule('.auction-table thead button')).toContain('font-weight: 300')
     expect(rule('.auction-table thead button')).toContain('color: var(--placeholder)')

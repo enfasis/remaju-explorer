@@ -142,9 +142,9 @@ a { color: inherit; }
 .auction-table th, .auction-table td { padding: 10px 14px; vertical-align: middle; }
 .auction-table tbody th, .auction-table tbody td { font-weight: 400; }
 .auction-table thead { background: transparent; font-size: .8rem; }
-.auction-table thead th { position: relative; padding: 0; white-space: nowrap; background: var(--field); border: 0; }
-.auction-table thead th:first-child { border-top-left-radius: var(--radius); border-bottom-left-radius: var(--radius); }
-.auction-table thead th:last-child { border-top-right-radius: var(--radius); border-bottom-right-radius: var(--radius); }
+.auction-table thead th { position: relative; padding: 0; white-space: nowrap; background: var(--field); border-top: .5px solid var(--control-border); border-bottom: .5px solid var(--control-border); }
+.auction-table thead th:first-child { border-left: .5px solid var(--control-border); border-top-left-radius: var(--radius); border-bottom-left-radius: var(--radius); }
+.auction-table thead th:last-child { border-right: .5px solid var(--control-border); border-top-right-radius: var(--radius); border-bottom-right-radius: var(--radius); }
 .auction-table thead button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 14px; background: none; border: 0; font: inherit; font-weight: 300; color: var(--placeholder); cursor: pointer; text-align: left; }
 .auction-table thead button:hover, .auction-table th[aria-sort="ascending"] button, .auction-table th[aria-sort="descending"] button { color: var(--accent); }
 .auction-table tbody tr { position: relative; }
