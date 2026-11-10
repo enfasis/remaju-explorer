@@ -62,7 +62,7 @@ jobs:
           run_id=$(jq -er '.run_id | select(type == "string" and test("^[A-Za-z0-9_-]{1,80}$"))' report.json) || exit 4
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
           echo "publish=$(jq -r '.status == "complete"' report.json)" >> "$GITHUB_OUTPUT"
-          jq '{status, scope, count, advertised_total, page_size, details_fetched, details_reused, stop_reason, matched_window, pages_complete, details_complete, failures: (.failures | length), error}' report.json
+          jq '{status, scope, count, advertised_total, page_size, details_fetched, details_reused, stop_reason, matched_window, pages_complete, details_complete, failures, error}' report.json
           if [ "$code" -eq 0 ] && [ -z "$MAX_PAGES$STOP_WINDOW" ] && [ "$(jq -r '.status' report.json)" != complete ]; then
             exit 4
           fi
