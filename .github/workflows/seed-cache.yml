@@ -1,6 +1,9 @@
 name: Seed caches from R2 (one-off)
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/seed-cache.yml]
 permissions:
   contents: read
 jobs:
