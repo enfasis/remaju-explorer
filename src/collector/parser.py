@@ -1,3 +1,5 @@
+import json
+import sys
 from collections.abc import Callable, Iterator
 from datetime import datetime, timezone
 from itertools import count
@@ -10,7 +12,7 @@ from models import Auction, Card, RemateDetail, Seguimiento
 from utils import extract
 from utils.archive import utc_now, write_json
 from utils.collection_cache import CollectionCache, ConsecutiveWindow
-from utils.debugger import Trace
+from utils.debugger import Trace, diagnostic_error
 from utils.jsf import parse_partial_response
 from utils.site import CRONOGRAMA, INMUEBLES, ROWS, RemajuSite, polite_pause
 
@@ -31,7 +33,7 @@ class Parser:
         self.order: list[str] = []
 
     def process(self) -> list[Auction]:
-        for first, cards in self.pages():
+        for _, cards in self.pages():
             for card in cards:
                 self.order.append(card.listing.numero_remate)
                 reused = self.baseline.reuse(card)
@@ -40,7 +42,7 @@ class Parser:
                     self.reused += 1
                     self.save()
                 else:
-                    self.collect(first, card)
+                    self.collect(card)
                 if self.window and self.window.observe(card.listing.numero_remate, reused is not None):
                     self.stop_reason = "known-consecutive-window"
                     return self.auctions
@@ -66,7 +68,7 @@ class Parser:
                 self.pages_complete = True
                 return
 
-    def collect(self, first: int, card: Card) -> None:
+    def collect(self, card: Card) -> None:
         try:
             auction = Auction(
                 numero_remate=card.listing.numero_remate,
@@ -75,9 +77,8 @@ class Parser:
                 seguimiento=self.tracking(card),
             )
         except (ValueError, requests.RequestException) as error:
-            self.failures.append({"numero_remate": card.listing.numero_remate, "type": type(error).__name__, "message": str(error)})
-            self.recover(first)
-            return
+            self.failures.append({"numero_remate": card.listing.numero_remate, "type": type(error).__name__, "message": diagnostic_error(error)})
+            raise
         self.auctions.append(auction)
         self.fetched += 1
         self.baseline.fetched(auction)
@@ -100,10 +101,6 @@ class Parser:
         self.site.leave()
         return extract.seguimiento(html)
 
-    def recover(self, first: int) -> None:
-        self.site.open_listing()
-        self.site.list_page(first)
-
     def seen(self, card: Card) -> bool:
         return any(auction.numero_remate == card.listing.numero_remate for auction in self.auctions)
 
@@ -118,7 +115,7 @@ class Parser:
             "details_reused": self.reused,
             "detail_checked_at": self.baseline.checked_at,
             "stop_reason": self.stop_reason,
-            "matched_window": list(self.window.matched) if self.window and self.stop_reason else [],
+            "matched_window": list(self.window.matched) if self.window and self.stop_reason == "known-consecutive-window" else [],
             "page_size": self.site.rows,
         }
 
@@ -138,6 +135,7 @@ def collect(output: Path, mode: str, session: requests.Session | None = None, pa
     limit = max_pages if mode == "live" else 1
     scope = "sample" if mode != "live" else "partial" if max_pages is not None else "all-phases"
     report: dict[str, Any] = {"run_id": run_id, "mode": mode, "scope": scope, "max_pages": limit, "status": "failed", "started_at": started, "observed_at": started, "detail_cache_max_age_hours": cache_max_age_hours}
+    parser: Parser | None = None
     try:
         with session or requests.Session() as http:
             parser = Parser(RemajuSite(trace, http, pause, page_size), trace.directory / "auctions.json", limit, baseline, stop_window)
@@ -147,12 +145,19 @@ def collect(output: Path, mode: str, session: requests.Session | None = None, pa
                 report["scope"] = "partial"
             complete = scope == "all-phases" and report["pages_complete"] and report["details_complete"] and report["count"] > 0 and report["count"] == report["advertised_total"]
             report["status"] = "complete" if complete else "partial"
-            (trace.directory / "ids.txt").write_text("".join(f"{number}\n" for number in parser.order), encoding="utf-8")
             if complete:
                 baseline.save(parser.auctions)
     except (ValueError, OSError, requests.RequestException) as error:
-        report["error"] = {"type": type(error).__name__, "message": str(error)}
+        if parser is not None:
+            parser.stop_reason = "collection-error"
+            report.update(parser.report())
+        report["status"] = "failed"
+        report["error"] = {"type": type(error).__name__, "message": diagnostic_error(error), "response": trace.last_response}
+        trace.event("collection", "failed", error=report["error"], failures=report.get("failures", []))
+        print(json.dumps({"run_id": run_id, "status": "failed", "error": report["error"], "failures": report.get("failures", [])}, ensure_ascii=False), file=sys.stderr)
     finally:
+        if parser is not None:
+            (trace.directory / "ids.txt").write_text("".join(f"{number}\n" for number in parser.order), encoding="utf-8")
         report["finished_at"] = utc_now()
         write_json(trace.directory / "run.json", report)
     return report

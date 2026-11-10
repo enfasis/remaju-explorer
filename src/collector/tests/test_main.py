@@ -51,6 +51,14 @@ def test_process_consolidates_without_external_services(capsys, tmp_path):
     assert read_json(tmp_path / "consolidated.json") == {"run_id": "r1", "auctions": []}
 
 
+def test_failed_collection_returns_nonzero_with_machine_readable_report(capsys, tmp_path, monkeypatch):
+    report = {"run_id": "r1", "status": "failed", "error": {"message": "Unexpected redirect"}}
+    monkeypatch.setattr("main.collect", lambda *args, **kwargs: report)
+    code, out, _ = invoke(capsys, "collect", "--mode", "live", "--output", str(tmp_path))
+    assert code == 4
+    assert json.loads(out) == report
+
+
 @pytest.mark.parametrize("args", [("--help",), ("query", "--help")])
 def test_help_exits_cleanly(capsys, args):
     code, out, _ = invoke(capsys, *args)

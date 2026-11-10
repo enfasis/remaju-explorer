@@ -1,4 +1,5 @@
 import pytest
+import requests
 
 from parser import collect, replay
 from utils.archive import read_json, write_json
@@ -114,13 +115,76 @@ def test_live_run_with_page_limit_is_partial(tmp_path, source):
     assert report["status"] == "partial"
 
 
-def test_failed_detail_is_recorded_and_collection_continues(tmp_path, list_html, list_xml, detail_html, inmuebles_xml, cronograma_xml):
+def test_failed_detail_stops_collection_and_preserves_progress(tmp_path, list_html, list_xml, detail_html, inmuebles_xml, cronograma_xml, capsys):
     broken = Source(list_html, list_xml, detail_html, inmuebles_xml, cronograma_xml, {"formBuscarRemateExterno:listaRemate:1:j_idt169"})
     report = collect(tmp_path, "live", broken, lambda: None)
-    assert report["status"] == "partial"
+    assert report["status"] == "failed"
     assert report["details_complete"] is False
     assert [failure["numero_remate"] for failure in report["failures"]] == ["22095"]
-    assert report["count"] == 3
+    assert report["count"] == 1
+    assert report["stop_reason"] == "collection-error"
+    assert report["pages_complete"] is False
+    assert report["error"]["response"]["action"] == "detail-page"
+    run_dir = tmp_path / report["run_id"]
+    assert read_json(run_dir / "run.json") == report
+    assert len(read_json(run_dir / "auctions.json")) == 1
+    assert (run_dir / "ids.txt").read_text().splitlines() == ["22096", "22095"]
+    assert broken.calls[-1] == ("GET", DETAIL_URL, "")
+    assert sum(url == LIST_URL and method == "GET" for method, url, _ in broken.calls) == 1
+    assert "22095" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("kind", ["redirect", "challenge", "timeout", "http-error"])
+def test_request_error_stops_without_recovery_and_preserves_baseline(tmp_path, source, monkeypatch, kind):
+    monkeypatch.setattr("utils.site.advertised_total", lambda _: 4)
+    cache = tmp_path / "cache"
+    collect(tmp_path / "runs", "live", source, lambda: None, cache_dir=cache)
+    baseline = {path.name: path.read_bytes() for path in cache.iterdir()}
+    original = source.request
+    source.calls.clear()
+
+    def fail(method, url, **kwargs):
+        if method == "GET" and url == DETAIL_URL:
+            source.calls.append((method, url, ""))
+            if kind == "timeout":
+                raise requests.Timeout("Source timed out")
+            response = requests.Response()
+            response.status_code = {"redirect": 302, "challenge": 200, "http-error": 503}[kind]
+            response.headers["Location"] = "/challenge;jsessionid=secret?token=secret"
+            response.headers["Content-Type"] = "text/html"
+            response._content = b'<div class="h-captcha"></div>' if kind == "challenge" else b"Source response"
+            return response
+        return original(method, url, **kwargs)
+
+    source.request = fail
+    report = collect(tmp_path / "runs", "live", source, lambda: None, cache_dir=cache, cache_max_age_hours=0)
+    assert report["status"] == "failed"
+    assert report["count"] == 0
+    assert report["details_complete"] is False
+    assert len(report["failures"]) == 1
+    assert report["failures"][0]["numero_remate"] == "22096"
+    assert source.calls[-1] == ("GET", DETAIL_URL, "")
+    assert len(source.calls) == 4
+    assert {path.name: path.read_bytes() for path in cache.iterdir()} == baseline
+    run_dir = tmp_path / "runs" / report["run_id"]
+    assert read_json(run_dir / "run.json") == report
+    assert '"state": "failed"' in (run_dir / "events.jsonl").read_text()
+    response = report["error"]["response"]
+    if kind == "timeout":
+        assert response is None
+    else:
+        assert response["challenge_detected"] is (kind == "challenge")
+        assert "secret" not in response["location"]
+        assert (run_dir / response["body_file"]).is_file()
+
+
+def test_listing_error_retains_a_failed_run_report(tmp_path, source):
+    source.pages["page"] = "invalid XML"
+    report = collect(tmp_path, "live", source, lambda: None)
+    assert report["status"] == "failed"
+    assert report["count"] == 0
+    assert report["error"]["response"]["action"] == "list-page"
+    assert len(source.calls) == 2
 
 
 def test_challenge_fails_run_without_auctions(tmp_path):
