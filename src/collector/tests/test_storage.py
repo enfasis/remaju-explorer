@@ -3,7 +3,7 @@ from io import BytesIO
 import pytest
 from botocore.exceptions import ClientError
 
-from storage import download, publish, restore
+from storage import download, fetch, publish, restore
 from utils.archive import write_json
 from utils.publication import checksum
 
@@ -77,3 +77,27 @@ def test_restore_rejects_cache_path_traversal(tmp_path):
     client.objects["private", "cache/../../escape"] = b"data"
     with pytest.raises(ValueError, match="Invalid manifest file path"):
         restore(client, "public", "private", tmp_path / "site", tmp_path / "cache")
+
+
+def test_fetch_downloads_a_run_trace(tmp_path):
+    client = Client()
+    client.objects["private", "runs/20261110T1/events.jsonl"] = b"{}"
+    client.objects["private", "runs/20261110T1/responses/000008.txt"] = b"body"
+    client.objects["private", "runs/20261110T10/run.json"] = b"other"
+    assert fetch(client, "private", "20261110T1", tmp_path) == 2
+    assert (tmp_path / "20261110T1/responses/000008.txt").read_bytes() == b"body"
+    assert not (tmp_path / "20261110T10").exists()
+
+
+def test_fetch_rejects_invalid_run_ids_and_traversal(tmp_path):
+    client = Client()
+    with pytest.raises(ValueError, match="Invalid run ID"):
+        fetch(client, "private", "../cache", tmp_path)
+    client.objects["private", "runs/x/../../../escape"] = b"data"
+    with pytest.raises(ValueError, match="Invalid manifest file path"):
+        fetch(client, "private", "x", tmp_path)
+
+
+def test_fetch_fails_when_the_run_is_missing(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        fetch(Client(), "private", "missing", tmp_path)

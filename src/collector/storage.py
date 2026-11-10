@@ -75,20 +75,42 @@ def save(client: Any, bucket: str, cache: Path, run: Path) -> None:
                 client.put_object(Bucket=bucket, Key=f"{prefix}/{path.relative_to(directory).as_posix()}", Body=path.read_bytes())
 
 
+def fetch(client: Any, bucket: str, run_id: str, target: Path) -> int:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", run_id):
+        raise ValueError("Invalid run ID")
+    prefix = f"runs/{run_id}/"
+    destination = target / run_id
+    count = 0
+    for page in client.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix=prefix):
+        for item in page.get("Contents", []):
+            relative = item["Key"].removeprefix(prefix)
+            if relative and not item["Key"].endswith("/"):
+                download(client, bucket, item["Key"], document_path(destination, relative))
+                count += 1
+    if not count:
+        raise FileNotFoundError(f"No trace found at {prefix}")
+    return count
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("restore", "publish", "save"))
+    parser.add_argument("action", choices=("restore", "publish", "save", "fetch"))
     parser.add_argument("--site", type=Path)
     parser.add_argument("--cache", type=Path)
     parser.add_argument("--run", type=Path)
     parser.add_argument("--public")
     parser.add_argument("--private")
+    parser.add_argument("--run-id")
+    parser.add_argument("--target", type=Path)
     args = parser.parse_args()
     client = boto3.client("s3", endpoint_url=os.environ["AWS_ENDPOINT_URL"], region_name="auto")
     if args.action == "restore":
         restore(client, args.public, args.private, args.site, args.cache)
     elif args.action == "publish":
         publish(client, args.public, args.site)
+    elif args.action == "fetch":
+        count = fetch(client, args.private, args.run_id, args.target)
+        print(json.dumps({"run_id": args.run_id, "files": count, "path": str(args.target / args.run_id)}))
     else:
         save(client, args.private, args.cache, args.run)
 
