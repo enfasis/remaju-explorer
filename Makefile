@@ -7,7 +7,7 @@ help:
 	@echo "web-build: build the static explorer"
 	@echo "sample/download: run a non-publishable live source sample"
 	@echo "process RUN=var/private/runs/<id>: post-process a cached run (no paid services)"
-	@echo "trace [RUN_ID=<id>]: download the latest (or given) refresh run trace from the private R2 bucket (read-only, via Infisical)"
+	@echo "trace [GH_RUN=<actions run id>]: download the latest (or given) refresh run trace artifact"
 
 build:
 	docker compose build
@@ -24,12 +24,11 @@ sample: download
 process:
 	docker compose run --rm collector python src/collector/main.py process --run-dir $(RUN)
 
-RUN_ID ?= latest
-
 trace:
-	@infisical run --silent -- sh -c 'export AWS_ACCESS_KEY_ID="$$R2_DEBUG_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$$R2_DEBUG_SECRET_ACCESS_KEY" AWS_ENDPOINT_URL="$$R2_ENDPOINT"; \
-		docker compose run --rm --build -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_ENDPOINT_URL collector \
-		python src/collector/storage.py fetch --private "$$R2_PRIVATE_BUCKET" --run-id "$(RUN_ID)" --target var/private/runs'
+	@id="$(GH_RUN)"; [ -n "$$id" ] || id=$$(gh run list -R mejorame/remaju -w refresh.yml -s completed -L 1 --json databaseId -q '.[0].databaseId'); \
+	mkdir -p var/private/runs && cd var/private/runs && rm -rf trace-* && \
+	gh run download -R mejorame/remaju "$$id" -p 'trace-*' && \
+	for d in trace-*; do rm -rf "$${d#trace-}" && mv "$$d" "$${d#trace-}" && echo "Actions run $$id -> var/private/runs/$${d#trace-}"; done
 
 run:
 	docker compose up web

@@ -25,13 +25,7 @@ def download(client: Any, bucket: str, key: str, target: Path, optional: bool = 
     return True
 
 
-def restore(client: Any, public: str, private: str, site: Path, cache: Path) -> None:
-    cache.mkdir(parents=True, exist_ok=True)
-    for page in client.get_paginator("list_objects_v2").paginate(Bucket=private, Prefix="cache/"):
-        for item in page.get("Contents", []):
-            relative = item["Key"].removeprefix("cache/")
-            if relative and not item["Key"].endswith("/"):
-                download(client, private, item["Key"], document_path(cache, relative))
+def restore(client: Any, public: str, site: Path) -> None:
     if download(client, public, "manifest.json", site / "manifest.json", optional=True):
         manifest = read_json(site / "manifest.json")
         if manifest.get("schema_version") != 2 or manifest["history"]["path"] != "history.json" or manifest["ids"]["path"] != "ids.txt":
@@ -66,62 +60,17 @@ def publish(client: Any, bucket: str, site: Path) -> None:
     print(json.dumps({key: manifest[key] for key in ("dataset_version", "count", "history_count")}))
 
 
-def save(client: Any, bucket: str, cache: Path, run: Path) -> None:
-    if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", run.name):
-        raise ValueError("Invalid run ID")
-    for directory, prefix in ((cache, "cache"), (run, f"runs/{run.name}")):
-        for path in sorted(directory.rglob("*")):
-            if path.is_file() and not path.is_symlink():
-                client.put_object(Bucket=bucket, Key=f"{prefix}/{path.relative_to(directory).as_posix()}", Body=path.read_bytes())
-
-
-def latest_run(client: Any, bucket: str) -> str:
-    runs = {item["Key"].split("/")[1] for page in client.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix="runs/") for item in page.get("Contents", []) if item["Key"].count("/") >= 2}
-    if not runs:
-        raise FileNotFoundError("No run traces found")
-    return max(runs)
-
-
-def fetch(client: Any, bucket: str, run_id: str, target: Path) -> tuple[str, int]:
-    if run_id == "latest":
-        run_id = latest_run(client, bucket)
-    if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", run_id):
-        raise ValueError("Invalid run ID")
-    prefix = f"runs/{run_id}/"
-    destination = target / run_id
-    count = 0
-    for page in client.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix=prefix):
-        for item in page.get("Contents", []):
-            relative = item["Key"].removeprefix(prefix)
-            if relative and not item["Key"].endswith("/"):
-                download(client, bucket, item["Key"], document_path(destination, relative))
-                count += 1
-    if not count:
-        raise FileNotFoundError(f"No trace found at {prefix}")
-    return run_id, count
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("restore", "publish", "save", "fetch"))
+    parser.add_argument("action", choices=("restore", "publish"))
     parser.add_argument("--site", type=Path)
-    parser.add_argument("--cache", type=Path)
-    parser.add_argument("--run", type=Path)
     parser.add_argument("--public")
-    parser.add_argument("--private")
-    parser.add_argument("--run-id")
-    parser.add_argument("--target", type=Path)
     args = parser.parse_args()
     client = boto3.client("s3", endpoint_url=os.environ["AWS_ENDPOINT_URL"], region_name="auto")
     if args.action == "restore":
-        restore(client, args.public, args.private, args.site, args.cache)
-    elif args.action == "publish":
-        publish(client, args.public, args.site)
-    elif args.action == "fetch":
-        run_id, count = fetch(client, args.private, args.run_id, args.target)
-        print(json.dumps({"run_id": run_id, "files": count, "path": str(args.target / run_id)}))
+        restore(client, args.public, args.site)
     else:
-        save(client, args.private, args.cache, args.run)
+        publish(client, args.public, args.site)
 
 
 if __name__ == "__main__":

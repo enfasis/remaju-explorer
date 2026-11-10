@@ -8,11 +8,12 @@ ROOT = Path(__file__).resolve().parents[3]
 def test_r2_credentials_are_only_in_storage_step_environments():
     workflow = (ROOT / ".github/workflows/refresh.yml").read_text()
     assert "R2_SECRET_ACCESS_KEY" not in workflow.split("    steps:")[0]
-    allowed = {"Restore caches and previous state from R2", "Upload flat data files, then manifest", "Save caches and run trace to the private bucket"}
+    allowed = {"Restore previous state from R2", "Upload flat data files, then manifest"}
     for block in workflow.split("      - name: ")[1:]:
         if "R2_SECRET_ACCESS_KEY" in block:
             assert block.splitlines()[0] in allowed
             assert "uv run --no-sync python storage.py" in block
+    assert "R2_PRIVATE_BUCKET" not in workflow
     assert "awscli.zip" not in workflow
     assert "sudo" not in workflow
 
