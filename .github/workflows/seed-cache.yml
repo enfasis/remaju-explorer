@@ -1,0 +1,31 @@
+name: Seed caches from R2 (one-off)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  seed:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    environment: production
+    env:
+      AWS_DEFAULT_REGION: auto
+      AWS_ENDPOINT_URL: ${{ vars.R2_ENDPOINT }}
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+    defaults:
+      run:
+        working-directory: src/collector
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
+      - run: uv sync --locked
+      - name: Restore caches from the private bucket
+        env:
+          AWS_ACCESS_KEY_ID: ${{ vars.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: uv run --no-sync python storage.py restore --site "$GITHUB_WORKSPACE/var/site" --cache "$GITHUB_WORKSPACE/var/cache" --public "${{ vars.R2_DATA_BUCKET }}" --private "${{ vars.R2_PRIVATE_BUCKET }}" && find "$GITHUB_WORKSPACE/var/cache" -type f | wc -l
+      - uses: actions/cache/save@v6.1.0
+        with:
+          path: var/cache
+          key: remaju-cache-seed-${{ github.run_id }}
