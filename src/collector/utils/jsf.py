@@ -1,8 +1,11 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from urllib.parse import urljoin
 from xml.etree import ElementTree
 
 from selectolax.parser import HTMLParser
+
+from .debugger import diagnostic_url
 
 VIEW_STATE = "javax.faces.ViewState"
 
@@ -26,10 +29,10 @@ class AjaxInteraction:
     render: str = ""
     event: str = ""
     parameters: tuple[tuple[str, str], ...] = ()
-    navigates: bool = False
+    destination: str = ""
 
     def payload(self, fields: Mapping[str, str], state: str) -> dict[str, str]:
-        if not state or not all((self.name, self.source, self.execute)) or not (self.render or self.navigates):
+        if not state or not all((self.name, self.source, self.execute)) or not (self.render or self.destination):
             raise ValueError("Incomplete JSF interaction")
         payload = dict(fields)
         payload.update({
@@ -50,7 +53,11 @@ class AjaxInteraction:
         result = parse_partial_response(xml)
         if result.error:
             raise ValueError(f"Invalid {self.name} response")
-        if not self.navigates and (result.redirect is not None or not any(key in result.updates for key in self.render.split())):
+        if self.destination:
+            if not result.redirect or urljoin(self.destination, result.redirect) != self.destination:
+                target = diagnostic_url(result.redirect) if result.redirect else "(missing)"
+                raise ValueError(f"Unexpected {self.name} redirect: {target}")
+        elif result.redirect is not None or not any(key in result.updates for key in self.render.split()):
             raise ValueError(f"Invalid {self.name} response")
         return result
 

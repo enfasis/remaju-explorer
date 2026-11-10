@@ -8,7 +8,7 @@ import requests
 from models import Card
 
 from .debugger import Trace
-from .extract import LIST_ID, TABS_ID, advertised_total, button_id
+from .extract import LIST_ID, TABS_ID, advertised_total, button_id, cards
 from .jsf import AjaxInteraction, JsfSession, form_session
 
 BASE_URL = "https://remaju.pj.gob.pe/remaju/pages/publico"
@@ -60,8 +60,8 @@ def tab_change(tab: Tab) -> AjaxInteraction:
     )
 
 
-def click(name: str, button: str, parameters: tuple[tuple[str, str], ...] = ()) -> AjaxInteraction:
-    return AjaxInteraction(name=name, source=button, execute="@all", parameters=((button, button), *parameters), navigates=True)
+def click(name: str, button: str, destination: str, parameters: tuple[tuple[str, str], ...] = ()) -> AjaxInteraction:
+    return AjaxInteraction(name=name, source=button, execute="@all", parameters=((button, button), *parameters), destination=destination)
 
 
 def home_page(html: str) -> bool:
@@ -77,7 +77,7 @@ def tracking_page(html: str) -> bool:
 
 
 def polite_pause() -> None:
-    time.sleep(0.5 + random.uniform(0, 0.5))
+    time.sleep(1 + random.uniform(0, 1))
 
 
 class RemajuSite:
@@ -86,7 +86,8 @@ class RemajuSite:
         self.session = session
         self.pause = pause
         self.rows = rows
-        self.listing: dict[str, str] = {}
+        self.first = 0
+        self.cards: dict[str, Card] = {}
         self.view = JsfSession({}, "")
         self.exit: tuple[str, AjaxInteraction] | None = None
         self.total: int | None = None
@@ -94,14 +95,24 @@ class RemajuSite:
     def open_listing(self) -> None:
         html = self.get(LIST_URL, "list-init")
         self.view = form_session(html, LIST_FORM)
-        self.listing = dict(self.view.fields)
+        self.cards = {}
         self.total = advertised_total(html) or self.total
 
     def list_page(self, first: int) -> str:
-        return self.post(LIST_URL, list_page(first, self.rows))
+        xml = self.post(LIST_URL, list_page(first, self.rows))
+        self.first = first
+        self.cards = {card.listing.numero_remate: card for card in cards(xml)}
+        return xml
+
+    def current_card(self, card: Card) -> Card:
+        current = self.cards.get(card.listing.numero_remate)
+        if current is None or current.listing != card.listing:
+            raise ValueError(f"Listing changed for auction {card.listing.numero_remate}")
+        return current
 
     def open_detail(self, card: Card) -> str:
-        self.post(LIST_URL, click("detail-click", card.detail_id))
+        current = self.current_card(card)
+        self.post(LIST_URL, click("detail-click", current.detail_id, DETAIL_URL))
         html = self.get(DETAIL_URL, "detail-page")
         if not detail_page(html):
             raise ValueError(f"Invalid detail page for auction {card.listing.numero_remate}")
@@ -114,7 +125,10 @@ class RemajuSite:
         return xml
 
     def open_tracking(self, card: Card) -> str:
-        self.post(LIST_URL, click("tracking-click", str(card.tracking_id)))
+        current = self.current_card(card)
+        if not current.tracking_id:
+            raise ValueError(f"Tracking action missing for auction {card.listing.numero_remate}")
+        self.post(LIST_URL, click("tracking-click", current.tracking_id, TRACKING_URL))
         html = self.get(TRACKING_URL, "tracking-page")
         if not tracking_page(html):
             raise ValueError(f"Invalid tracking page for auction {card.listing.numero_remate}")
@@ -126,15 +140,16 @@ class RemajuSite:
             raise ValueError("No page to leave")
         url, interaction = self.exit
         self.post(url, interaction)
-        self.view = JsfSession(dict(self.listing), self.view.state)
         self.exit = None
+        self.open_listing()
+        self.list_page(self.first)
 
     def enter(self, html: str, form: str, url: str, name: str, parameters: tuple[tuple[str, str], ...] = ()) -> None:
         button = button_id(html, form, "Regresar")
         if button is None:
             raise ValueError(f"Return button missing in {form}")
         self.view = form_session(html, form)
-        self.exit = (url, click(name, button, parameters))
+        self.exit = (url, click(name, button, LIST_URL, parameters))
 
     def get(self, url: str, action: str) -> str:
         self.pause()

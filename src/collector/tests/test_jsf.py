@@ -2,7 +2,7 @@ import pytest
 
 from utils.extract import LIST_ID
 from utils.jsf import JsfSession, parse_partial_response
-from utils.site import click, list_page
+from utils.site import DETAIL_URL, click, list_page
 
 LIST_PAGE = list_page(0)
 
@@ -85,9 +85,40 @@ def test_source_view_state_update_id_refreshes_state():
 def test_navigation_click_accepts_redirect_and_sends_button():
     session = JsfSession({"form": "form"}, "state")
     sent = []
-    interaction = click("detail-click", "form:list:0:j_idt169")
-    session.perform(interaction, lambda action, payload: sent.append(payload) or '<partial-response><redirect url="/detail"/></partial-response>')
+    interaction = click("detail-click", "form:list:0:j_idt169", DETAIL_URL)
+    session.perform(interaction, lambda action, payload: sent.append(payload) or '<partial-response><redirect url="/remaju/pages/publico/mostrarDetalleRemate.xhtml"/></partial-response>')
     assert sent[0]["javax.faces.source"] == "form:list:0:j_idt169"
     assert sent[0]["form:list:0:j_idt169"] == "form:list:0:j_idt169"
     assert sent[0]["javax.faces.partial.execute"] == "@all"
     assert "javax.faces.partial.render" not in sent[0]
+
+
+@pytest.mark.parametrize("target", [DETAIL_URL, "/remaju/pages/publico/mostrarDetalleRemate.xhtml", "mostrarDetalleRemate.xhtml"])
+def test_navigation_accepts_only_the_expected_destination(target):
+    session = JsfSession({}, "state")
+    interaction = click("detail-click", "button", DETAIL_URL)
+    session.perform(interaction, lambda action, payload: f'<partial-response><redirect url="{target}"/></partial-response>')
+
+
+@pytest.mark.parametrize("target", [
+    "/remaju/error/error500.xhtml",
+    "/remaju/index.xhtml",
+    "https://other.example/remaju/pages/publico/mostrarDetalleRemate.xhtml",
+    "http://remaju.pj.gob.pe/remaju/pages/publico/mostrarDetalleRemate.xhtml",
+    "/remaju/pages/publico/mostrarDetalleRemate.xhtml?token=secret",
+    "",
+])
+def test_unexpected_navigation_does_not_change_state_or_expose_secrets(target):
+    session = JsfSession({}, "original")
+    interaction = click("tracking-click", "button", DETAIL_URL)
+    body = f'<partial-response><redirect url="{target}"/><changes><update id="javax.faces.ViewState">new</update></changes></partial-response>'
+    with pytest.raises(ValueError, match="Unexpected tracking-click redirect") as error:
+        session.perform(interaction, lambda action, payload: body)
+    assert "secret" not in str(error.value)
+    assert session.state == "original"
+
+
+def test_navigation_requires_a_redirect():
+    interaction = click("detail-close", "button", DETAIL_URL)
+    with pytest.raises(ValueError, match=r"Unexpected detail-close redirect: \(missing\)"):
+        JsfSession({}, "state").perform(interaction, lambda action, payload: "<partial-response/>")

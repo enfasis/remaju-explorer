@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<partial-response id="j_id1"><redirect url="/remaju/error/error500.xhtml"></redirect><changes><eval><![CDATA[PF('dlgEstado').hide();]]></eval></changes></partial-response>

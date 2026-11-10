@@ -1,13 +1,17 @@
+import re
+from dataclasses import replace
+
 import pytest
 import requests
 
 from parser import collect, replay
 from utils.archive import read_json, write_json
-from utils.extract import LIST_ID, TABS_ID, cards
-from utils.site import DETAIL_URL, LIST_URL, TRACKING_URL
+from utils.debugger import Trace
+from utils.extract import LIST_ID, TABS_ID, cards, list_cards
+from utils.jsf import VIEW_STATE, form_session
+from utils.site import DETAIL_URL, LIST_FORM, LIST_URL, TRACKING_URL, RemajuSite
 from utils.publication import publish_run
 
-REDIRECT = '<partial-response><changes><update id="j_id1:javax.faces.ViewState:0"><![CDATA[next]]></update></changes><redirect url="/remaju"/></partial-response>'
 EMPTY_PAGE = f'<partial-response><changes><update id="{LIST_ID}"><![CDATA[]]></update></changes></partial-response>'
 TRACKING_HTML = """<html><body><form id="formSeguimiento" name="formSeguimiento">
 <input type="hidden" name="formSeguimiento" value="formSeguimiento"/>
@@ -20,6 +24,10 @@ TRACKING_HTML = """<html><body><form id="formSeguimiento" name="formSeguimiento"
 </div></div>
 <button id="formSeguimiento:j_idt40" type="submit"><span>Regresar</span></button>
 </form></body></html>"""
+
+
+def redirect(url: str) -> str:
+    return f'<partial-response><redirect url="{url}"/></partial-response>'
 
 
 class Response:
@@ -63,12 +71,61 @@ class Source:
             return self.pages["inmuebles" if data[f"{TABS_ID}_newTab"].endswith("tbInmuebles") else "cronograma"]
         if url == LIST_URL:
             self.selected = source
-        return REDIRECT
+            return redirect(DETAIL_URL if source.endswith("j_idt169") else TRACKING_URL)
+        return redirect(LIST_URL)
+
+
+class StatefulSource(Source):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.revision = 0
+        self.expected_state = ""
+        self.actions: dict[str, str] = {}
+        self.pagination: list[tuple[int, int]] = []
+
+    def respond(self, method: str, url: str, data: dict[str, str], source: str) -> str:
+        if method == "GET" and url == LIST_URL:
+            self.revision += 1
+            self.expected_state = f"listing-{self.revision}"
+            self.actions = {}
+            html = self.pages["list"]
+            return html.replace(form_session(html, LIST_FORM).state, self.expected_state)
+        if method == "POST" and url == LIST_URL:
+            assert data[VIEW_STATE] == self.expected_state
+            if source == LIST_ID:
+                first, rows = int(data[f"{LIST_ID}_first"]), int(data[f"{LIST_ID}_rows"])
+                self.pagination.append((first, rows))
+                self.expected_state = f"listing-{self.revision}-page-{first}"
+                templates = list_cards(self.pages["page"])
+                numbers = [card.listing.numero_remate for card in cards(self.pages["page"])]
+                content = []
+                for index in range(rows):
+                    template = index % len(templates)
+                    html = templates[template].html.replace(numbers[template], str(int(numbers[0]) - first - index))
+                    html = re.sub(rf"{LIST_ID}:\d+:", f"{LIST_ID}:{first + index}:", html)
+                    html = html.replace("j_idt169", f"j_idt{self.revision}169").replace("j_idt168", f"j_idt{self.revision}168")
+                    content.append(html)
+                xml = f'<partial-response><changes><update id="{LIST_ID}"><![CDATA[{"".join(content)}]]></update><update id="{VIEW_STATE}">{self.expected_state}</update></changes></partial-response>'
+                self.actions = {card.detail_id: DETAIL_URL for card in cards(xml)}
+                self.actions.update({card.tracking_id: TRACKING_URL for card in cards(xml) if card.tracking_id})
+                return xml
+            assert source in self.actions
+            self.selected = source
+            return redirect(self.actions[source])
+        if method == "POST" and url in {DETAIL_URL, TRACKING_URL} and source != TABS_ID:
+            self.expected_state = ""
+            self.actions = {}
+        return super().respond(method, url, data, source)
 
 
 @pytest.fixture
 def source(list_html, list_xml, detail_html, inmuebles_xml, cronograma_xml):
     return Source(list_html, list_xml, detail_html, inmuebles_xml, cronograma_xml)
+
+
+@pytest.fixture
+def stateful_source(list_html, list_xml, detail_html, inmuebles_xml, cronograma_xml):
+    return StatefulSource(list_html, list_xml, detail_html, inmuebles_xml, cronograma_xml)
 
 
 def test_sample_walks_listing_details_tabs_and_tracking(tmp_path, source):
@@ -85,7 +142,7 @@ def test_sample_walks_listing_details_tabs_and_tracking(tmp_path, source):
     assert auctions[0]["detail"]["remate_tab"]["expediente"] == "15700-2023-0-1817-JR-CO-07"
     assert len(auctions[0]["detail"]["cronograma_tab"]["fases"]) == 5
     assert auctions[0]["seguimiento"]["eventos"][0]["nro_convocatoria"] == "PRIMERA"
-    first_auction = [(method, url.rsplit("/", 1)[-1], action) for method, url, action in source.calls[:10]]
+    first_auction = [(method, url.rsplit("/", 1)[-1], action) for method, url, action in source.calls[:14]]
     assert first_auction == [
         ("GET", "remateExterno.xhtml", ""),
         ("POST", "remateExterno.xhtml", LIST_ID),
@@ -94,9 +151,13 @@ def test_sample_walks_listing_details_tabs_and_tracking(tmp_path, source):
         ("POST", "mostrarDetalleRemate.xhtml", TABS_ID),
         ("POST", "mostrarDetalleRemate.xhtml", TABS_ID),
         ("POST", "mostrarDetalleRemate.xhtml", "formDetalleRemate:j_idt171"),
+        ("GET", "remateExterno.xhtml", ""),
+        ("POST", "remateExterno.xhtml", LIST_ID),
         ("POST", "remateExterno.xhtml", "formBuscarRemateExterno:listaRemate:0:j_idt168"),
         ("GET", "mostrarSeguimientoRemate.xhtml", ""),
         ("POST", "mostrarSeguimientoRemate.xhtml", "formSeguimiento:j_idt40"),
+        ("GET", "remateExterno.xhtml", ""),
+        ("POST", "remateExterno.xhtml", LIST_ID),
     ]
 
 
@@ -130,7 +191,7 @@ def test_failed_detail_stops_collection_and_preserves_progress(tmp_path, list_ht
     assert len(read_json(run_dir / "auctions.json")) == 1
     assert (run_dir / "ids.txt").read_text().splitlines() == ["22096", "22095"]
     assert broken.calls[-1] == ("GET", DETAIL_URL, "")
-    assert sum(url == LIST_URL and method == "GET" for method, url, _ in broken.calls) == 1
+    assert sum(url == LIST_URL and method == "GET" for method, url, _ in broken.calls) == 3
     assert "22095" in capsys.readouterr().err
 
 
@@ -327,3 +388,84 @@ def test_public_history_and_ids_restore_the_incremental_baseline(tmp_path, sourc
     assert next_run["details_reused"] == 4
     assert next_run["details_fetched"] == 0
     assert len(source.calls) == 2
+
+
+def test_returns_reload_listing_state_and_refreshed_action_ids(tmp_path, stateful_source):
+    report = collect(tmp_path, "sample", stateful_source, lambda: None)
+    assert report["status"] == "partial"
+    assert report["count"] == 4
+    assert report["details_complete"] is True
+    assert stateful_source.revision == 9
+    assert stateful_source.pagination == [(0, 4)] * 9
+    clicks = [action for method, url, action in stateful_source.calls if method == "POST" and url == LIST_URL and action != LIST_ID]
+    assert clicks[:3] == [f"{LIST_ID}:0:j_idt1169", f"{LIST_ID}:0:j_idt2168", f"{LIST_ID}:1:j_idt3169"]
+
+
+def test_return_restores_twelve_row_page_and_reselects_by_number(tmp_path, stateful_source):
+    site = RemajuSite(Trace(tmp_path / "trace"), stateful_source, lambda: None, rows=12)
+    site.open_listing()
+    page = cards(site.list_page(12))
+    target = page[7]
+    assert target.listing.numero_remate == "22077"
+    site.open_detail(target)
+    site.leave()
+    assert stateful_source.pagination == [(12, 12), (12, 12)]
+    assert site.view.state == stateful_source.expected_state
+    site.open_tracking(target)
+    assert stateful_source.calls[-2] == ("POST", LIST_URL, f"{LIST_ID}:19:j_idt2168")
+    site.leave()
+    assert stateful_source.pagination == [(12, 12)] * 3
+    assert len(site.cards) == 12
+
+
+@pytest.mark.parametrize("change", ["missing", "changed", "no-tracking"])
+def test_refreshed_listing_cannot_select_a_missing_or_changed_auction(tmp_path, stateful_source, change):
+    site = RemajuSite(Trace(tmp_path / "trace"), stateful_source, lambda: None)
+    site.open_listing()
+    card = cards(site.list_page(0))[0]
+    number = card.listing.numero_remate
+    if change == "missing":
+        del site.cards[number]
+    elif change == "changed":
+        site.cards[number] = replace(card, listing=card.listing.model_copy(update={"descripcion": "changed"}))
+    else:
+        site.cards[number] = replace(card, tracking_id=None)
+    before = len(stateful_source.calls)
+    with pytest.raises(ValueError, match="Tracking action missing" if change == "no-tracking" else "Listing changed"):
+        site.open_tracking(card)
+    assert len(stateful_source.calls) == before
+
+
+@pytest.mark.parametrize("url, suffix, action", [
+    (LIST_URL, "j_idt169", "detail-click"),
+    (DETAIL_URL, "j_idt171", "detail-close"),
+    (LIST_URL, "j_idt168", "tracking-click"),
+    (TRACKING_URL, "j_idt40", "tracking-close"),
+])
+def test_recorded_source_error_stops_on_original_navigation_and_preserves_baseline(tmp_path, source, sample_data_dir, monkeypatch, url, suffix, action):
+    monkeypatch.setattr("utils.site.advertised_total", lambda _: 4)
+    cache = tmp_path / "cache"
+    assert collect(tmp_path / "runs", "live", source, lambda: None, cache_dir=cache)["status"] == "complete"
+    baseline = {path.name: path.read_bytes() for path in cache.iterdir()}
+    original = source.respond
+    recorded = (sample_data_dir / "navigation_error.xml").read_text()
+
+    def fail(method, request_url, data, button):
+        if method == "POST" and request_url == url and button.endswith(suffix):
+            return recorded
+        return original(method, request_url, data, button)
+
+    source.respond = fail
+    source.calls.clear()
+    report = collect(tmp_path / "runs", "live", source, lambda: None, cache_dir=cache, cache_max_age_hours=0)
+    assert report["status"] == "failed"
+    assert report["count"] == 0
+    assert report["failures"][0]["numero_remate"] == "22096"
+    assert report["error"]["message"] == f"Unexpected {action} redirect: /remaju/error/error500.xhtml"
+    response = report["error"]["response"]
+    assert response["action"] == action
+    assert response["status"] == 200
+    assert (tmp_path / "runs" / report["run_id"] / response["body_file"]).read_text() == recorded
+    assert source.calls[-1][0:2] == ("POST", url)
+    assert source.calls[-1][2].endswith(suffix)
+    assert {path.name: path.read_bytes() for path in cache.iterdir()} == baseline
