@@ -75,7 +75,16 @@ def save(client: Any, bucket: str, cache: Path, run: Path) -> None:
                 client.put_object(Bucket=bucket, Key=f"{prefix}/{path.relative_to(directory).as_posix()}", Body=path.read_bytes())
 
 
-def fetch(client: Any, bucket: str, run_id: str, target: Path) -> int:
+def latest_run(client: Any, bucket: str) -> str:
+    runs = {item["Key"].split("/")[1] for page in client.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix="runs/") for item in page.get("Contents", []) if item["Key"].count("/") >= 2}
+    if not runs:
+        raise FileNotFoundError("No run traces found")
+    return max(runs)
+
+
+def fetch(client: Any, bucket: str, run_id: str, target: Path) -> tuple[str, int]:
+    if run_id == "latest":
+        run_id = latest_run(client, bucket)
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", run_id):
         raise ValueError("Invalid run ID")
     prefix = f"runs/{run_id}/"
@@ -89,7 +98,7 @@ def fetch(client: Any, bucket: str, run_id: str, target: Path) -> int:
                 count += 1
     if not count:
         raise FileNotFoundError(f"No trace found at {prefix}")
-    return count
+    return run_id, count
 
 
 def main() -> None:
@@ -109,8 +118,8 @@ def main() -> None:
     elif args.action == "publish":
         publish(client, args.public, args.site)
     elif args.action == "fetch":
-        count = fetch(client, args.private, args.run_id, args.target)
-        print(json.dumps({"run_id": args.run_id, "files": count, "path": str(args.target / args.run_id)}))
+        run_id, count = fetch(client, args.private, args.run_id, args.target)
+        print(json.dumps({"run_id": run_id, "files": count, "path": str(args.target / run_id)}))
     else:
         save(client, args.private, args.cache, args.run)
 

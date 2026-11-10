@@ -84,7 +84,7 @@ def test_fetch_downloads_a_run_trace(tmp_path):
     client.objects["private", "runs/20261110T1/events.jsonl"] = b"{}"
     client.objects["private", "runs/20261110T1/responses/000008.txt"] = b"body"
     client.objects["private", "runs/20261110T10/run.json"] = b"other"
-    assert fetch(client, "private", "20261110T1", tmp_path) == 2
+    assert fetch(client, "private", "20261110T1", tmp_path) == ("20261110T1", 2)
     assert (tmp_path / "20261110T1/responses/000008.txt").read_bytes() == b"body"
     assert not (tmp_path / "20261110T10").exists()
 
@@ -101,3 +101,12 @@ def test_fetch_rejects_invalid_run_ids_and_traversal(tmp_path):
 def test_fetch_fails_when_the_run_is_missing(tmp_path):
     with pytest.raises(FileNotFoundError):
         fetch(Client(), "private", "missing", tmp_path)
+
+
+def test_fetch_latest_picks_the_newest_run(tmp_path):
+    client = Client()
+    client.objects["private", "runs/20261109T1/run.json"] = b"old"
+    client.objects["private", "runs/20261110T1/run.json"] = b"new"
+    client.objects["private", "cache/x.json"] = b"{}"
+    assert fetch(client, "private", "latest", tmp_path) == ("20261110T1", 1)
+    assert (tmp_path / "20261110T1/run.json").read_bytes() == b"new"
