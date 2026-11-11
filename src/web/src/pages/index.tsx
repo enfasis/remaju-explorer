@@ -15,7 +15,7 @@ import { useTitle } from '../use-title'
 
 const AuctionMap = lazy(() => import('../components/auction-map'))
 
-const parsers = { q: parseAsString.withDefault(''), department: parseAsString.withDefault(''), province: parseAsString.withDefault(''), district: parseAsString.withDefault(''), propertyType: parseAsString.withDefault(''), phase: parseAsString.withDefault(''), currency: parseAsString.withDefault('PEN'), minPrice: parseAsString.withDefault(''), maxPrice: parseAsString.withDefault(''), from: parseAsString.withDefault(''), to: parseAsString.withDefault(''), mapped: parseAsString.withDefault(''), sort: parseAsString.withDefault('date-desc'), view: parseAsString.withDefault('') }
+const parsers = { q: parseAsString.withDefault(''), department: parseAsString.withDefault(''), province: parseAsString.withDefault(''), district: parseAsString.withDefault(''), propertyType: parseAsString.withDefault(''), phase: parseAsString.withDefault(''), currency: parseAsString.withDefault('PEN'), minPrice: parseAsString.withDefault(''), maxPrice: parseAsString.withDefault(''), from: parseAsString.withDefault(''), to: parseAsString.withDefault(''), mapped: parseAsString.withDefault(''), sort: parseAsString.withDefault('number-desc'), view: parseAsString.withDefault('') }
 
 function DateField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   const [focused, setFocused] = useState(false)

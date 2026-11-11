@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { facetOptions, type Filters } from './filters'
 import type { Summary } from './data'
 
-const defaults: Filters = { q: '', department: '', province: '', district: '', propertyType: '', phase: '', currency: 'PEN', minPrice: '', maxPrice: '', from: '', to: '', mapped: '', sort: 'date-desc' }
+const defaults: Filters = { q: '', department: '', province: '', district: '', propertyType: '', phase: '', currency: 'PEN', minPrice: '', maxPrice: '', from: '', to: '', mapped: '', sort: 'number-desc' }
 const auctions = [
   { numero_remate: '1', departamento: 'LIMA', provincia: 'LIMA', distrito: 'MIRAFLORES', tipo_inmueble: 'Casa', fase: 'Ofertas', descripcion: 'Parque', precio_base: { amount: '100', currency: 'PEN' }, offer_date: '2026-11-10', coordinates: [{ latitude: -12.12, longitude: -77.03 }] },
   { numero_remate: '2', departamento: 'LIMA', provincia: 'HUAURA', distrito: 'HUACHO', tipo_inmueble: 'Terreno', fase: 'Publicación', descripcion: 'Campo', precio_base: { amount: '200', currency: 'PEN' }, offer_date: '2026-11-20', coordinates: [] },
