@@ -40,8 +40,7 @@ class CollectionCache:
         self.order: list[str] = []
         self.checked_at: dict[str, str] = {}
         self.positions: dict[str, int] = {}
-        self.visited: set[int] = set()
-        self.next_position = 0
+        self.last_position = -1
         if directory is None:
             return
         snapshot = directory / "auctions.json"
@@ -76,10 +75,8 @@ class CollectionCache:
     def reuse(self, card: Card) -> Auction | None:
         position = self.positions.get(card.listing.numero_remate)
         if position is not None:
-            in_order = position == self.next_position
-            self.visited.add(position)
-            while self.next_position in self.visited:
-                self.next_position += 1
+            in_order = position > self.last_position
+            self.last_position = max(self.last_position, position)
             if not in_order:
                 return None
         record = self.records.get(card.listing.numero_remate)

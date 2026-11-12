@@ -82,6 +82,8 @@ class StatefulSource(Source):
         self.expected_state = ""
         self.actions: dict[str, str] = {}
         self.pagination: list[tuple[int, int]] = []
+        self.inserted = 0
+        self.total: int | None = None
 
     def respond(self, method: str, url: str, data: dict[str, str], source: str) -> str:
         if method == "GET" and url == LIST_URL:
@@ -99,9 +101,10 @@ class StatefulSource(Source):
                 templates = list_cards(self.pages["page"])
                 numbers = [card.listing.numero_remate for card in cards(self.pages["page"])]
                 content = []
-                for index in range(rows):
-                    template = index % len(templates)
-                    html = templates[template].html.replace(numbers[template], str(int(numbers[0]) - first - index))
+                for index in range(rows if self.total is None else min(rows, self.total - first)):
+                    offset = first + index - self.inserted
+                    template = offset % len(templates)
+                    html = templates[template].html.replace(numbers[template], str(int(numbers[0]) - offset))
                     html = re.sub(rf"{LIST_ID}:\d+:", f"{LIST_ID}:{first + index}:", html)
                     html = html.replace("j_idt169", f"j_idt{self.revision}169").replace("j_idt168", f"j_idt{self.revision}168")
                     content.append(html)
@@ -333,13 +336,25 @@ def test_unexpected_page_size_cannot_skip_records(tmp_path, source):
     assert "unexpected page size" in report["error"]["message"]
 
 
-def test_reordered_auction_forces_detail_refresh(tmp_path, source, monkeypatch):
+def test_reordered_auctions_force_detail_refresh(tmp_path, source, monkeypatch):
     monkeypatch.setattr("utils.site.advertised_total", lambda _: 4)
     cache = tmp_path / "cache"
     collect(tmp_path / "runs", "live", source, lambda: None, cache_dir=cache)
     monkeypatch.setattr("utils.extract.cards", lambda xml: [cards(xml)[i] for i in [2, 0, 1, 3]])
     report = collect(tmp_path / "runs", "live", source, lambda: None, cache_dir=cache)
-    assert report["details_fetched"] == 1
+    assert report["details_fetched"] == 2
+    assert report["details_reused"] == 2
+
+
+def test_removed_auction_does_not_block_reuse_of_later_ones(tmp_path, source, monkeypatch):
+    monkeypatch.setattr("utils.site.advertised_total", lambda _: 4)
+    cache = tmp_path / "cache"
+    collect(tmp_path / "runs", "live", source, lambda: None, cache_dir=cache)
+    monkeypatch.setattr("utils.site.advertised_total", lambda _: 3)
+    monkeypatch.setattr("utils.extract.cards", lambda xml: [cards(xml)[i] for i in [0, 2, 3]])
+    report = collect(tmp_path / "runs", "live", source, lambda: None, cache_dir=cache)
+    assert report["status"] == "complete"
+    assert report["details_fetched"] == 0
     assert report["details_reused"] == 3
 
 
@@ -433,7 +448,58 @@ def test_refreshed_listing_cannot_select_a_missing_or_changed_auction(tmp_path, 
     before = len(stateful_source.calls)
     with pytest.raises(ValueError, match="Tracking action missing" if change == "no-tracking" else "Listing changed"):
         site.open_tracking(card)
-    assert len(stateful_source.calls) == before
+    assert all(action in {"", LIST_ID} for _, _, action in stateful_source.calls[before:])
+    assert stateful_source.pagination[1:] == ([(4, 4)] if change == "missing" else [])
+
+
+def test_inserted_auction_relocates_card_pushed_to_next_page(tmp_path, stateful_source):
+    site = RemajuSite(Trace(tmp_path / "trace"), stateful_source, lambda: None, rows=12)
+    site.open_listing()
+    target = cards(site.list_page(36))[-1]
+    site.open_detail(target)
+    stateful_source.inserted = 1
+    site.leave()
+    assert site.shift == 1
+    assert target.listing.numero_remate not in site.cards
+    site.open_tracking(target)
+    assert stateful_source.pagination[-2:] == [(36, 12), (48, 12)]
+    assert stateful_source.calls[-2][2].startswith(f"{LIST_ID}:48:")
+    site.leave()
+    assert site.first == 48
+
+
+def test_auction_missing_from_neighbouring_pages_still_fails(tmp_path, stateful_source):
+    site = RemajuSite(Trace(tmp_path / "trace"), stateful_source, lambda: None, rows=12)
+    site.open_listing()
+    target = cards(site.list_page(12))[0]
+    stateful_source.inserted = 30
+    del site.cards[target.listing.numero_remate]
+    with pytest.raises(ValueError, match="Listing changed"):
+        site.open_detail(target)
+    assert stateful_source.pagination[-2:] == [(24, 12), (0, 12)]
+
+
+@pytest.mark.parametrize("inserted, total", [(1, 25), (-1, 23)])
+def test_listing_shift_during_collection_neither_skips_nor_fails(tmp_path, stateful_source, monkeypatch, inserted, total):
+    stateful_source.total = 24
+    monkeypatch.setattr("utils.site.advertised_total", lambda _: stateful_source.total)
+    respond = stateful_source.respond
+
+    def shifting(method, url, data, source):
+        if method == "GET" and url == LIST_URL and stateful_source.revision == 30:
+            stateful_source.inserted, stateful_source.total = inserted, total
+        return respond(method, url, data, source)
+
+    stateful_source.respond = shifting
+    report = collect(tmp_path, "live", stateful_source, lambda: None, page_size=12)
+    numbers = (tmp_path / report["run_id"] / "ids.txt").read_text().splitlines()
+    assert report["failures"] == []
+    assert report["pages_complete"] is True
+    assert len(numbers) == len(set(numbers))
+    assert {str(number) for number in range(22073, 22097)} <= set(numbers)
+    if inserted > 0:
+        assert report["status"] == "complete"
+        assert numbers[-1] == "22097"
 
 
 @pytest.mark.parametrize("url, suffix, action", [

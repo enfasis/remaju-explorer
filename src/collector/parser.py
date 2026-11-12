@@ -49,10 +49,11 @@ class Parser:
         return self.auctions
 
     def pages(self) -> Iterator[tuple[int, list[Card]]]:
+        position = 0
         for page in count():
             if self.max_pages is not None and page >= self.max_pages:
                 return
-            first = page * self.site.rows
+            first = position - position % self.site.rows
             self.site.open_listing()
             cards = extract.cards(self.site.list_page(first))
             if not cards:
@@ -62,11 +63,16 @@ class Parser:
                 raise ValueError("Source returned an unexpected page size; refusing to skip records")
             fresh = [card for card in cards if not self.seen(card)]
             if not fresh:
+                self.pages_complete = self.site.total is not None and len(self.auctions) >= self.site.total
                 return
+            shift = self.site.shift
             yield first, fresh
-            if self.site.total is not None and first + self.site.rows >= self.site.total:
-                self.pages_complete = True
-                return
+            position = first + len(cards) + self.site.shift - shift
+            if self.site.total is not None and position >= self.site.total:
+                if len(self.auctions) >= self.site.total:
+                    self.pages_complete = True
+                    return
+                position = 0
 
     def collect(self, card: Card) -> None:
         try:

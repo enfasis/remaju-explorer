@@ -1,5 +1,6 @@
 import random
 import time
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -76,6 +77,15 @@ def tracking_page(html: str) -> bool:
     return "Detalle de seguimiento" in html and not home_page(html)
 
 
+def row(card: Card) -> int:
+    return int(card.detail_id.removeprefix(f"{LIST_ID}:").split(":", 1)[0])
+
+
+def shift(previous: dict[str, Card], current: dict[str, Card]) -> int:
+    deltas = Counter(row(current[number]) - row(card) for number, card in previous.items() if number in current)
+    return deltas.most_common(1)[0][0] if deltas else 0
+
+
 def polite_pause() -> None:
     time.sleep(1 + random.uniform(0, 1))
 
@@ -91,6 +101,7 @@ class RemajuSite:
         self.view = JsfSession({}, "")
         self.exit: tuple[str, AjaxInteraction] | None = None
         self.total: int | None = None
+        self.shift = 0
 
     def open_listing(self) -> None:
         html = self.get(LIST_URL, "list-init")
@@ -105,10 +116,21 @@ class RemajuSite:
         return xml
 
     def current_card(self, card: Card) -> Card:
-        current = self.cards.get(card.listing.numero_remate)
+        current = self.cards.get(card.listing.numero_remate) or self.relocate(card)
         if current is None or current.listing != card.listing:
             raise ValueError(f"Listing changed for auction {card.listing.numero_remate}")
         return current
+
+    def relocate(self, card: Card) -> Card | None:
+        origin = self.first
+        for first in (origin + self.rows, origin - self.rows):
+            if first < 0:
+                continue
+            self.open_listing()
+            self.list_page(first)
+            if card.listing.numero_remate in self.cards:
+                return self.cards[card.listing.numero_remate]
+        return None
 
     def open_detail(self, card: Card) -> str:
         current = self.current_card(card)
@@ -141,8 +163,10 @@ class RemajuSite:
         url, interaction = self.exit
         self.post(url, interaction)
         self.exit = None
+        previous = self.cards
         self.open_listing()
         self.list_page(self.first)
+        self.shift += shift(previous, self.cards)
 
     def enter(self, html: str, form: str, url: str, name: str, parameters: tuple[tuple[str, str], ...] = ()) -> None:
         button = button_id(html, form, "Regresar")
